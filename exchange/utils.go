@@ -70,6 +70,7 @@ func cleanOpenRTBRequests(ctx context.Context,
 		return
 	}
 
+	// reads alias section from request
 	aliases, errs = parseAliases(orig)
 	if len(errs) > 0 {
 		return
@@ -125,6 +126,10 @@ func cleanOpenRTBRequests(ctx context.Context,
 
 	return
 }
+
+// given original request
+// given "cleaned" (from other bidders) imps by bidder
+// return bidder request
 
 func splitBidRequest(req *openrtb.BidRequest,
 	impsByBidder map[string][]openrtb.Imp,
@@ -247,7 +252,7 @@ func extractBuyerUIDs(user *openrtb.User) (map[string]string, error) {
 	// as long as user.ext.prebid exists.
 	buyerUIDs := userExt.Prebid.BuyerUIDs
 	userExt.Prebid = nil
-	if userExt.Consent != "" || userExt.DigiTrust != nil {
+	if userExt.Consent != "" || userExt.DigiTrust != nil { // bug... hmmm, yeah? probably?.... :) eids?
 		if newUserExtBytes, err := json.Marshal(userExt); err != nil {
 			return nil, err
 		} else {
@@ -285,6 +290,7 @@ func splitImps(imps []openrtb.Imp) (map[string][]openrtb.Imp, []error) {
 		if ok {
 			var prebidExt openrtb_ext.ExtImpPrebid
 
+			// new mthod, everything in imp.ext.prebid.bidders (imp.ext.prebid.bidders.appnexus)
 			if err := json.Unmarshal(rawPrebidExt, &prebidExt); err == nil && prebidExt.Bidder != nil {
 				if errs := sanitizedImpCopy(&imp, prebidExt.Bidder, rawPrebidExt, &splitImps); errs != nil {
 					errList = append(errList, errs...)
@@ -294,6 +300,7 @@ func splitImps(imps []openrtb.Imp) (map[string][]openrtb.Imp, []error) {
 			}
 		}
 
+		// old method, everything directly in imp.ext (imp.ext.appnexus)
 		if errs := sanitizedImpCopy(&imp, impExt, rawPrebidExt, &splitImps); errs != nil {
 			errList = append(errList, errs...)
 		}
@@ -313,8 +320,7 @@ func sanitizedImpCopy(imp *openrtb.Imp,
 	var prebidExt map[string]json.RawMessage
 	var errs []error
 
-	// We don't want to include other demand partners' bidder params
-	// in the sanitized imp
+	// if new way, then clear the bidder item.
 	if err := json.Unmarshal(rawPrebidExt, &prebidExt); err == nil {
 		delete(prebidExt, "bidder")
 
@@ -324,8 +330,9 @@ func sanitizedImpCopy(imp *openrtb.Imp,
 		}
 	}
 
+	// for either new or old way - map from either imp.ext  or imp.ext.prebid.bidder
 	for bidder, ext := range bidderExts {
-		if bidder == openrtb_ext.PrebidExtKey {
+		if bidder == openrtb_ext.PrebidExtKey { // skip over old way
 			continue
 		}
 
@@ -371,6 +378,8 @@ func prepareUser(req *openrtb.BidRequest, givenBidder string, coreBidder openrtb
 		req.User = copyWithBuyerUID(req.User, cookieId)
 	}
 
+	// ummm.. we should also look for core bidder
+
 	return hadCookie
 }
 
@@ -414,6 +423,7 @@ func parseImpExts(imps []openrtb.Imp) ([]map[string]json.RawMessage, error) {
 }
 
 // parseAliases parses the aliases from the BidRequest
+// getting request.ext.prebid.aliases
 func parseAliases(orig *openrtb.BidRequest) (map[string]string, []error) {
 	var aliases map[string]string
 	if value, dataType, _, err := jsonparser.Get(orig.Ext, openrtb_ext.PrebidExtKey, "aliases"); dataType == jsonparser.Object && err == nil {
@@ -424,6 +434,7 @@ func parseAliases(orig *openrtb.BidRequest) (map[string]string, []error) {
 		return nil, []error{err}
 	}
 	return aliases, nil
+
 }
 
 // Quick little randomizer for a list of strings. Stuffing it in utils to keep other files clean
