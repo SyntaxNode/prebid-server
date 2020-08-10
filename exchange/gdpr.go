@@ -14,7 +14,7 @@ func extractGDPR(bidRequest *openrtb.BidRequest, usersyncIfAmbiguous bool) (gdpr
 		err = json.Unmarshal(bidRequest.Regs.Ext, &re)
 	}
 	if re.GDPR == nil || err != nil {
-		if usersyncIfAmbiguous {
+		if usersyncIfAmbiguous { // usersyncIfAmbiguous == assumeNoGdprEnforcement
 			gdpr = 0
 		} else {
 			gdpr = 1

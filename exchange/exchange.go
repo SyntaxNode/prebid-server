@@ -149,6 +149,7 @@ func (e *exchange) HoldAuction(ctx context.Context, bidRequest *openrtb.BidReque
 	// Get currency rates conversions for the auction
 	conversions := e.currencyConverter.Rates()
 
+	// this is where the magic happens!!
 	adapterBids, adapterExtra, anyBidsReturned := e.getAllBids(auctionCtx, cleanRequests, aliases, bidAdjustmentFactors, blabels, conversions)
 
 	var auc *auction = nil
@@ -288,7 +289,7 @@ func (e *exchange) makeAuctionContext(ctx context.Context, needsCache bool) (auc
 	auctionCtx = ctx
 	cancel = func() {}
 	if needsCache {
-		if deadline, ok := ctx.Deadline(); ok {
+		if deadline, ok := ctx.Deadline(); ok { // why would this fail? ok == false. no deadline set. infinite time.
 			auctionCtx, cancel = context.WithDeadline(ctx, deadline.Add(-e.cacheTime))
 		}
 	}
@@ -300,14 +301,20 @@ func (e *exchange) getAllBids(ctx context.Context, cleanRequests map[openrtb_ext
 	// Set up pointers to the bid results
 	adapterBids := make(map[openrtb_ext.BidderName]*pbsOrtbSeatBid, len(cleanRequests))
 	adapterExtra := make(map[openrtb_ext.BidderName]*seatResponseExtra, len(cleanRequests))
-	chBids := make(chan *bidResponseWrapper, len(cleanRequests))
+
+	// why extra? why not just extend bidAdjustmentFactors? We don't remember (yet?)
+
+	chBids := make(chan *bidResponseWrapper, len(cleanRequests)) // buffered-channel: 1 buffer slot per bidder
 	bidsFound := false
 
 	for bidderName, req := range cleanRequests {
 		// Here we actually call the adapters and collect the bids.
-		coreBidder := resolveBidder(string(bidderName), aliases)
+		coreBidder := resolveBidder(string(bidderName), aliases) // duplicated from previous steps, maybe not too expensive.
 		bidderRunner := e.recoverSafely(cleanRequests, func(aName openrtb_ext.BidderName, coreBidder openrtb_ext.BidderName, request *openrtb.BidRequest, bidlabels *pbsmetrics.AdapterLabels, conversions currencies.Conversions) {
 			// Passing in aName so a doesn't change out from under the go routine
+
+			// REVIEW MARKER! CONTINUE HERE!!
+
 			if bidlabels.Adapter == "" {
 				glog.Errorf("Exchange: bidlables for %s (%s) missing adapter string", aName, coreBidder)
 				bidlabels.Adapter = coreBidder
@@ -396,6 +403,7 @@ func (e *exchange) recoverSafely(cleanRequests map[openrtb_ext.BidderName]*openr
 					coreBidder, r, bidlabels.PubID, allBidders, string(debug.Stack()))
 				e.me.RecordAdapterPanic(*bidlabels)
 				// Let the master request know that there is no data here
+				// - signals to the main thread that we're done
 				brw := new(bidResponseWrapper)
 				brw.adapterExtra = new(seatResponseExtra)
 				chBids <- brw

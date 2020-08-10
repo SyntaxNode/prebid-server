@@ -107,7 +107,7 @@ func cleanOpenRTBRequests(ctx context.Context,
 		}
 	}
 	// bidder level privacy policies
-	for bidder, bidReq := range requestsByBidder {
+	for bidder, bidReq := range requestsByBidder { // this looks to be a common pattern
 
 		if gdpr == 1 {
 			coreBidder := resolveBidder(bidder.String(), aliases)
