@@ -106,6 +106,8 @@ type bidderAdapter struct {
 func (bidder *bidderAdapter) requestBid(ctx context.Context, request *openrtb.BidRequest, name openrtb_ext.BidderName, bidAdjustment float64, conversions currencies.Conversions, reqInfo *adapters.ExtraRequestInfo) (*pbsOrtbSeatBid, []error) {
 	reqData, errs := bidder.Bidder.MakeRequests(request, reqInfo)
 
+	// ensure we always have at least 1 bid or else that there's an error of some kind
+
 	if len(reqData) == 0 {
 		// If the adapter failed to generate both requests and errors, this is an error.
 		if len(errs) == 0 {
@@ -116,9 +118,11 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, request *openrtb.Bi
 
 	// Make any HTTP requests in parallel.
 	// If the bidder only needs to make one, save some cycles by just using the current one.
-	responseChannel := make(chan *httpCallInfo, len(reqData))
+	responseChannel := make(chan *httpCallInfo, len(reqData)) // buffered channel (aka, more memory usage)
 	if len(reqData) == 1 {
 		responseChannel <- bidder.doRequest(ctx, reqData[0])
+		// slight performance tune
+		// - don't create go routines if we don't need one
 	} else {
 		for _, oneReqData := range reqData {
 			go func(data *adapters.RequestData) {
@@ -148,6 +152,11 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, request *openrtb.Bi
 			errs = append(errs, moreErrs...)
 
 			if bidResponse != nil {
+				// handle currency
+				// - why isn't this in the exchange handler after the bids are in??
+				// - BECAUSE! the seat bid just has 1 currency, but each response could be in it's own currency
+				// - we could also choose to keep the "mini bids" around and combine them later
+
 				// Setup default currency as `USD` is not set in bid request nor bid response
 				if bidResponse.Currency == "" {
 					bidResponse.Currency = defaultCurrency
@@ -175,6 +184,7 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, request *openrtb.Bi
 							nativeMarkup, moreErrs := addNativeTypes(bidResponse.Bids[i].Bid, request)
 							errs = append(errs, moreErrs...)
 
+							// save changes back to bid markup
 							if nativeMarkup != nil {
 								markup, err := json.Marshal(*nativeMarkup)
 								if err != nil {
@@ -214,6 +224,7 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, request *openrtb.Bi
 }
 
 func addNativeTypes(bid *openrtb.Bid, request *openrtb.BidRequest) (*nativeResponse.Response, []error) {
+	// load the native request
 	var errs []error
 	var nativeMarkup *nativeResponse.Response
 	if err := json.Unmarshal(json.RawMessage(bid.AdM), &nativeMarkup); err != nil || len(nativeMarkup.Assets) == 0 {
@@ -221,17 +232,20 @@ func addNativeTypes(bid *openrtb.Bid, request *openrtb.BidRequest) (*nativeRespo
 		return nil, errs
 	}
 
+	// filter all imps which are native
 	nativeImp, err := getNativeImpByImpID(bid.ImpID, request)
 	if err != nil {
 		errs = append(errs, err)
 		return nil, errs
 	}
 
+	// decode native imps
 	var nativePayload nativeRequests.Request
 	if err := json.Unmarshal(json.RawMessage((*nativeImp).Request), &nativePayload); err != nil {
 		errs = append(errs, err)
 	}
 
+	//
 	for _, asset := range nativeMarkup.Assets {
 		if err := setAssetTypes(asset, nativePayload); err != nil {
 			errs = append(errs, err)
@@ -241,12 +255,15 @@ func addNativeTypes(bid *openrtb.Bid, request *openrtb.BidRequest) (*nativeRespo
 	return nativeMarkup, errs
 }
 
+// asset = request, nativePayload = response
+// resolve sub types for image and data
 func setAssetTypes(asset nativeResponse.Asset, nativePayload nativeRequests.Request) error {
+	// is request for image?
 	if asset.Img != nil {
 		if tempAsset, err := getAssetByID(asset.ID, nativePayload.Assets); err == nil {
 			if tempAsset.Img != nil {
 				if tempAsset.Img.Type != 0 {
-					asset.Img.Type = tempAsset.Img.Type
+					asset.Img.Type = tempAsset.Img.Type // set type in response from request
 				}
 			} else {
 				return fmt.Errorf("Response has an Image asset with ID:%d present that doesn't exist in the request", asset.ID)
@@ -260,7 +277,7 @@ func setAssetTypes(asset nativeResponse.Asset, nativePayload nativeRequests.Requ
 		if tempAsset, err := getAssetByID(asset.ID, nativePayload.Assets); err == nil {
 			if tempAsset.Data != nil {
 				if tempAsset.Data.Type != 0 {
-					asset.Data.Type = tempAsset.Data.Type
+					asset.Data.Type = tempAsset.Data.Type // set type in response from request
 				}
 			} else {
 				return fmt.Errorf("Response has a Data asset with ID:%d present that doesn't exist in the request", asset.ID)

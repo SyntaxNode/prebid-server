@@ -39,15 +39,18 @@ func (bidder *adaptedAdapter) requestBid(ctx context.Context, request *openrtb.B
 		return nil, errs
 	}
 
+	// makes it's own http calls, via the ctx
 	legacyBids, err := bidder.adapter.Call(ctx, legacyRequest, legacyBidder)
 	if err != nil {
 		errs = append(errs, err)
 	}
 
+	// performs bid adjustment
 	for i := 0; i < len(legacyBids); i++ {
 		legacyBids[i].Price = legacyBids[i].Price * bidAdjustment
 	}
 
+	// convert legacy bid response into openrtb bid response
 	finalResponse, moreErrs := toNewResponse(legacyBids, legacyBidder, name)
 	return finalResponse, append(errs, moreErrs...)
 }
@@ -112,6 +115,8 @@ func (bidder *adaptedAdapter) toLegacyRequest(req *openrtb.BidRequest) (*pbs.PBS
 			cookie.TrySync("adnxs", req.User.ID)
 		}
 	}
+
+	// quick and easy for PBJS? probably. used parts of openRTB from the start.
 
 	return &pbs.PBSRequest{
 		AccountID: acctId,

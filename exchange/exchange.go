@@ -152,6 +152,8 @@ func (e *exchange) HoldAuction(ctx context.Context, bidRequest *openrtb.BidReque
 	// this is where the magic happens!!
 	adapterBids, adapterExtra, anyBidsReturned := e.getAllBids(auctionCtx, cleanRequests, aliases, bidAdjustmentFactors, blabels, conversions)
 
+	// !!!!!! HEY REVIEWERS! CONTINUE FROM HERE!
+
 	var auc *auction = nil
 	var bidResponseExt *openrtb_ext.ExtBidResponse = nil
 	if anyBidsReturned {
@@ -316,23 +318,38 @@ func (e *exchange) getAllBids(ctx context.Context, cleanRequests map[openrtb_ext
 			// REVIEW MARKER! CONTINUE HERE!!
 
 			if bidlabels.Adapter == "" {
+				// fyi: should never happen. it's a sanity check.. with no consequence?
 				glog.Errorf("Exchange: bidlables for %s (%s) missing adapter string", aName, coreBidder)
 				bidlabels.Adapter = coreBidder
+
+				// adapter? bidder? which is it?
+				// - adapter: the code which handles the request
+				// - bidder:  who is handling the request.
 			}
 			brw := new(bidResponseWrapper)
-			brw.bidder = aName
+			brw.bidder = aName // aka, bidderName
 			// Defer basic metrics to insure we capture them after all the values have been set
 			defer func() {
 				e.me.RecordAdapterRequest(*bidlabels)
 			}()
 			start := time.Now()
 
+			// give slight edge to preferred bidders
 			adjustmentFactor := 1.0
 			if givenAdjustment, ok := bidAdjustments[string(aName)]; ok {
 				adjustmentFactor = givenAdjustment
 			}
+
 			var reqInfo adapters.ExtraRequestInfo
-			reqInfo.PbsEntryPoint = bidlabels.RType
+			reqInfo.PbsEntryPoint = bidlabels.RType // legacy, openrtb2-web, openrtb2-app, amp, video
+
+			// requestBid is inside a wrapper
+			// - there are 2 possibilities here:
+			// 1) legacy (exchange/legacy.go), 2) modern (exchange/bidder.go)
+
+			// perhaps wait to refactor until we kill legacy.go?
+
+			// !!!!!!! REVIEW MARKER. DEEP DIVE INTO requestBid
 			bids, err := e.adapterMap[coreBidder].requestBid(ctx, request, aName, adjustmentFactor, conversions, &reqInfo)
 
 			// Add in time reporting
@@ -350,7 +367,7 @@ func (e *exchange) getAllBids(ctx context.Context, cleanRequests map[openrtb_ext
 			serr := errsToBidderErrors(err)
 			bidlabels.AdapterBids = bidsToMetric(brw.adapterBids)
 			bidlabels.AdapterErrors = errorsToMetric(err)
-			// Append any bid validation errors to the error list
+			// Append any bid validation errors to the error list // append? doesn't look like it!
 			ae.Errors = serr
 			brw.adapterExtra = ae
 			if bids != nil {
@@ -360,13 +377,13 @@ func (e *exchange) getAllBids(ctx context.Context, cleanRequests map[openrtb_ext
 					e.me.RecordAdapterBidReceived(*bidlabels, bid.bidType, bid.bid.AdM != "")
 				}
 			}
-			chBids <- brw
+			chBids <- brw // write to buffered channel, so it won't block
 		}, chBids)
 		go bidderRunner(bidderName, coreBidder, req, blabels[coreBidder], conversions)
 	}
 	// Wait for the bidders to do their thing
 	for i := 0; i < len(cleanRequests); i++ {
-		brw := <-chBids
+		brw := <-chBids // block until we have data to read
 
 		//if bidder returned no bids back - remove bidder from further processing
 		if brw.adapterBids != nil && len(brw.adapterBids.bids) != 0 {
