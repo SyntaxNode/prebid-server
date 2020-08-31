@@ -152,8 +152,6 @@ func (e *exchange) HoldAuction(ctx context.Context, bidRequest *openrtb.BidReque
 	// this is where the magic happens!!
 	adapterBids, adapterExtra, anyBidsReturned := e.getAllBids(auctionCtx, cleanRequests, aliases, bidAdjustmentFactors, blabels, conversions)
 
-	// !!!!!! HEY REVIEWERS! CONTINUE FROM HERE!
-
 	var auc *auction = nil
 	var bidResponseExt *openrtb_ext.ExtBidResponse = nil
 	if anyBidsReturned {
@@ -174,8 +172,12 @@ func (e *exchange) HoldAuction(ctx context.Context, bidRequest *openrtb.BidReque
 
 		auc = newAuction(adapterBids, len(bidRequest.Imp))
 
+		// when would this be nil? when the request doesn't ask for it. like from pbjs or impbus/psp
 		if targData != nil {
 			auc.setRoundedPrices(targData.priceGranularity)
+
+			// !!!!!! HEY REVIEWERS! CONTINUE FROM HERE!
+			// [But We Need To Still Explore applyCategoryMapping]
 
 			if requestExt.Prebid.SupportDeals {
 				dealErrs := applyDealSupport(bidRequest, auc, bidCategory)

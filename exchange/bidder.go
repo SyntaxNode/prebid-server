@@ -57,14 +57,14 @@ type adaptedBidder interface {
 // pbsOrtbBid.bidTargets does not need to be filled out by the Bidder. It will be set later by the exchange.
 // pbsOrtbBid.bidVideo is optional but should be filled out by the Bidder if bidType is video.
 // pbsOrtbBid.dealPriority will become "response.seatbid[i].bid.dealPriority" in the final OpenRTB response.
-type pbsOrtbBid struct {
+type pbsOrtbBid struct { // which is just TypedBid + targets
 	bid          *openrtb.Bid
 	bidType      openrtb_ext.BidType
 	bidTargets   map[string]string
 	bidVideo     *openrtb_ext.ExtBidPrebidVideo
 	dealPriority int
 }
-
+]
 // pbsOrtbSeatBid is a SeatBid returned by an adaptedBidder.
 //
 // This is distinct from the openrtb.SeatBid so that the prebid-server ext can be passed back with typesafety.

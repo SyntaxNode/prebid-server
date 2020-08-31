@@ -55,10 +55,15 @@ func newAuction(seatBids map[openrtb_ext.BidderName]*pbsOrtbSeatBid, numImps int
 		if seatBid != nil {
 			for _, bid := range seatBid.bids {
 				cpm := bid.bid.Price
+
+				// figure out the winning bid per impression (whichever has the highest cpm).
+				// winning bids per imp id
 				wbid, ok := winningBids[bid.bid.ImpID]
 				if !ok || cpm > wbid.bid.Price {
 					winningBids[bid.bid.ImpID] = bid
 				}
+
+				// same extract tracking, but indexed by bidder
 				if bidMap, ok := winningBidsByBidder[bid.bid.ImpID]; ok {
 					bestSoFar, ok := bidMap[bidderName]
 					if !ok || cpm > bestSoFar.bid.Price {
@@ -84,6 +89,7 @@ func (a *auction) setRoundedPrices(priceGranularity openrtb_ext.PriceGranularity
 		for _, topBidPerBidder := range topBidsPerImp {
 			roundedPrice, err := GetCpmStringValue(topBidPerBidder.bid.Price, priceGranularity)
 			if err != nil {
+				// um.... actually, this could never happen!
 				glog.Errorf(`Error rounding price according to granularity. This shouldn't happen unless /openrtb2 input validation is buggy. Granularity was "%v".`, priceGranularity)
 			}
 			roundedPrices[topBidPerBidder] = roundedPrice
@@ -288,6 +294,7 @@ func defTTL(bidType openrtb_ext.BidType, defaultTTLs *config.DefaultTTLs) (ttl i
 	return 0
 }
 
+// really AuctionResult
 type auction struct {
 	// winningBids is a map from imp.id to the highest overall CPM bid in that imp.
 	winningBids map[string]*pbsOrtbBid

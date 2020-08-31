@@ -122,6 +122,8 @@ func (ert *ExtRequestTargeting) UnmarshalJSON(b []byte) error {
 
 // PriceGranularity defines the allowed values for bidrequest.ext.prebid.targeting.pricegranularity
 type PriceGranularity struct {
+	// the number of decimal points. 2 is what everyone uses.
+	// - convert to string, so we need the precision
 	Precision int                `json:"precision,omitempty"`
 	Ranges    []GranularityRange `json:"ranges,omitempty"`
 }
