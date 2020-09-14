@@ -85,6 +85,7 @@ func NewExchange(client *http.Client, cache prebid_cache_client.Client, cfg *con
 	return e
 }
 
+// bidRequest = original request
 func (e *exchange) HoldAuction(ctx context.Context, bidRequest *openrtb.BidRequest, usersyncs IdFetcher, labels pbsmetrics.Labels, categoriesFetcher *stored_requests.CategoryFetcher, debugLog *DebugLog) (*openrtb.BidResponse, error) {
 	// Snapshot of resolved bid request for debug if test request
 	resolvedRequest, err := buildResolvedRequest(bidRequest)
@@ -161,6 +162,11 @@ func (e *exchange) HoldAuction(ctx context.Context, bidRequest *openrtb.BidReque
 		if requestExt.Prebid.Targeting != nil && requestExt.Prebid.Targeting.IncludeBrandCategory != nil {
 			var err error
 			var rejections []string
+			//bidCategory is an important tracker for bid category info. it is later mutated.
+
+			// !!!!!! HEY REVIEWERS! we finished this method, except for.. applyCategoryMapping and buldresponse at the end
+
+			// refactoring idea: merge rejections into err.. since that's really what they are
 			bidCategory, adapterBids, rejections, err = applyCategoryMapping(ctx, requestExt, adapterBids, *categoriesFetcher, targData)
 			if err != nil {
 				return nil, fmt.Errorf("Error in category mapping : %s", err.Error())
@@ -175,9 +181,6 @@ func (e *exchange) HoldAuction(ctx context.Context, bidRequest *openrtb.BidReque
 		// when would this be nil? when the request doesn't ask for it. like from pbjs or impbus/psp
 		if targData != nil {
 			auc.setRoundedPrices(targData.priceGranularity)
-
-			// !!!!!! HEY REVIEWERS! CONTINUE FROM HERE!
-			// [But We Need To Still Explore applyCategoryMapping]
 
 			if requestExt.Prebid.SupportDeals {
 				dealErrs := applyDealSupport(bidRequest, auc, bidCategory)
@@ -222,6 +225,7 @@ type DealTier struct {
 	Info *DealTierInfo `json:"dealTier,omitempty"`
 }
 
+// this should be part of the bidder ext!!!
 type BidderDealTier struct {
 	DealInfo map[string]*DealTier
 }
@@ -231,14 +235,14 @@ func applyDealSupport(bidRequest *openrtb.BidRequest, auc *auction, bidCategory 
 	errs := []error{}
 	impDealMap := getDealTiers(bidRequest)
 
-	for impID, topBidsPerImp := range auc.winningBidsByBidder {
+	for impID, topBidsPerImp := range auc.winningBidsByBidder { // for each bidder
 		impDeal := impDealMap[impID].DealInfo
-		for bidder, topBidPerBidder := range topBidsPerImp {
+		for bidder, topBidPerBidder := range topBidsPerImp { // look at top bids
 			bidderString := bidder.String()
 
 			if topBidPerBidder.dealPriority > 0 {
-				if validateAndNormalizeDealTier(impDeal[bidderString]) {
-					updateHbPbCatDur(topBidPerBidder, impDeal[bidderString].Info, bidCategory)
+				if validateAndNormalizeDealTier(impDeal[bidderString]) { // validate the deal tier structure (hey? move into bid validation?)
+					updateHbPbCatDur(topBidPerBidder, impDeal[bidderString].Info, bidCategory) // only side affect is to update the bidCategory
 				} else {
 					errs = append(errs, fmt.Errorf("dealTier configuration invalid for bidder '%s', imp ID '%s'", bidderString, impID))
 				}
@@ -249,9 +253,15 @@ func applyDealSupport(bidRequest *openrtb.BidRequest, auc *auction, bidCategory 
 	return errs
 }
 
+// bidRequest = original request
+
 // getDealTiers creates map of impression to bidder deal tier configuration
 func getDealTiers(bidRequest *openrtb.BidRequest) map[string]*BidderDealTier {
 	impDealMap := make(map[string]*BidderDealTier)
+
+	// why is this a DealInfo map[string]*DealTier?
+	// maybe it's imp.ext.{{bidder}}.dealTier.xxx
+	// ... but!!! what if it's imp.ext.prebid.bidder.{{bidder}}?? huh?? BUG!!!!!
 
 	for _, imp := range bidRequest.Imp {
 		var bidderDealTier BidderDealTier
@@ -266,7 +276,7 @@ func getDealTiers(bidRequest *openrtb.BidRequest) map[string]*BidderDealTier {
 	return impDealMap
 }
 
-func validateAndNormalizeDealTier(impDeal *DealTier) bool {
+func validateAndNormalizeDealTier(impDeal *DealTier) bool { // bool == error flag
 	if impDeal == nil || impDeal.Info == nil {
 		return false
 	}
@@ -317,8 +327,6 @@ func (e *exchange) getAllBids(ctx context.Context, cleanRequests map[openrtb_ext
 		bidderRunner := e.recoverSafely(cleanRequests, func(aName openrtb_ext.BidderName, coreBidder openrtb_ext.BidderName, request *openrtb.BidRequest, bidlabels *pbsmetrics.AdapterLabels, conversions currencies.Conversions) {
 			// Passing in aName so a doesn't change out from under the go routine
 
-			// REVIEW MARKER! CONTINUE HERE!!
-
 			if bidlabels.Adapter == "" {
 				// fyi: should never happen. it's a sanity check.. with no consequence?
 				glog.Errorf("Exchange: bidlables for %s (%s) missing adapter string", aName, coreBidder)
@@ -351,7 +359,6 @@ func (e *exchange) getAllBids(ctx context.Context, cleanRequests map[openrtb_ext
 
 			// perhaps wait to refactor until we kill legacy.go?
 
-			// !!!!!!! REVIEW MARKER. DEEP DIVE INTO requestBid
 			bids, err := e.adapterMap[coreBidder].requestBid(ctx, request, aName, adjustmentFactor, conversions, &reqInfo)
 
 			// Add in time reporting

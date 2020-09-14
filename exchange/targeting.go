@@ -39,6 +39,8 @@ func (targData *targetData) setTargeting(auc *auction, isApp bool, categoryMappi
 		for bidderName, topBidPerBidder := range topBidsPerImp {
 			isOverallWinner := overallWinner == topBidPerBidder
 
+			// where we set the tareting keys
+
 			targets := make(map[string]string, 10)
 			if cpm, ok := auc.roundedPrices[topBidPerBidder]; ok {
 				targData.addKeys(targets, openrtb_ext.HbpbConstantKey, cpm, bidderName, isOverallWinner)
