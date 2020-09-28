@@ -198,7 +198,7 @@ func (deps *endpointDeps) AmpAuction(w http.ResponseWriter, r *http.Request, _ h
 				// but this is a very unlikely corner case. Doing this so we can catch "hb_cache_id"
 				// and "hb_cache_id_{deal}", which allows for deal support in AMP.
 				bidExt := &openrtb_ext.ExtBid{}
-				err := json.Unmarshal(bid.Ext, bidExt)
+				err := json.Unmarshal(bid.Ext, bidExt) //nooooooo!!!!! super expensive!!!!!
 				if err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					fmt.Fprintf(w, "Critical error while unpacking AMP targets: %v", err)
@@ -214,9 +214,12 @@ func (deps *endpointDeps) AmpAuction(w http.ResponseWriter, r *http.Request, _ h
 		}
 	}
 
+	// how about if we move the final marshaling down to here, and have access to the return structs?
+	// we need to refactor exchange.go.
+
 	// Extract any errors
 	var extResponse openrtb_ext.ExtBidResponse
-	eRErr := json.Unmarshal(response.Ext, &extResponse)
+	eRErr := json.Unmarshal(response.Ext, &extResponse) // also expensive!!!!!
 	if eRErr != nil {
 		ao.Errors = append(ao.Errors, fmt.Errorf("AMP response: failed to unpack OpenRTB response.ext, debug info cannot be forwarded: %v", eRErr))
 	}

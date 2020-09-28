@@ -275,6 +275,8 @@ func New(cfg *config.Configuration, rateConvertor *currencies.RateConverter) (r 
 	r.POST("/cookie_sync", endpoints.NewCookieSyncEndpoint(syncers, cfg, gdprPerms, r.MetricsEngine, pbsAnalytics))
 	r.GET("/status", endpoints.NewStatusEndpoint(cfg.StatusResponse))
 	r.GET("/", serveIndex)
+
+	// why? who needs this?
 	r.ServeFiles("/static/*filepath", http.Dir("static"))
 
 	userSyncDeps := &pbs.UserSyncDeps{

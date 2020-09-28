@@ -213,6 +213,16 @@ func (e *exchange) HoldAuction(ctx context.Context, bidRequest *openrtb.BidReque
 	}
 
 	// Build the response
+	// ctx             = used for timeouts
+	// liveAdapters    = list of bidder names in the auction
+	// adapterBids     = seat bids, but not that format.
+	// bidRequest      = original build request, with info for all bidders
+	// resolvedRequest = bidRequest as a JSON byte array [this no longer exists. was factored away.]
+	// adapterExtra    = basically the debug info
+	// auc             = auction result [used for generating targeting keys]
+	// bidResponseExt  = duplicates adapterExtra and has a few new unique fields.
+	// errs			   = errs to continue to append to
+	// (returnCreative  = newly added. not merged in this old branch.)
 	return e.buildBidResponse(ctx, liveAdapters, adapterBids, bidRequest, resolvedRequest, adapterExtra, auc, bidResponseExt, errs)
 }
 
@@ -479,8 +489,18 @@ func errsToBidderErrors(errs []error) []openrtb_ext.ExtBidderError {
 }
 
 // This piece takes all the bids supplied by the adapters and crafts an openRTB response to send back to the requester
+// ctx             = used for timeouts
+// liveAdapters    = list of bidder names in the auction - probably not needed. can use the adapterBids instead.
+// adapterBids     = seat bids, but not that format.
+// bidRequest      = original build request, with info for all bidders
+// resolvedRequest = bidRequest as a JSON byte array [this no longer exists. was factored away.]
+// adapterExtra    = basically the debug info
+// auc             = auction result [used for generating targeting keys]
+// bidResponseExt  = duplicates adapterExtra and has a few new unique fields.
+// errs			   = errs to continue to append to
+// (returnCreative  = newly added. not merged in this old branch.)
 func (e *exchange) buildBidResponse(ctx context.Context, liveAdapters []openrtb_ext.BidderName, adapterBids map[openrtb_ext.BidderName]*pbsOrtbSeatBid, bidRequest *openrtb.BidRequest, resolvedRequest json.RawMessage, adapterExtra map[openrtb_ext.BidderName]*seatResponseExtra, auc *auction, bidResponseExt *openrtb_ext.ExtBidResponse, errList []error) (*openrtb.BidResponse, error) {
-	bidResponse := new(openrtb.BidResponse)
+	bidResponse := &openrtb.BidResponse{}
 
 	bidResponse.ID = bidRequest.ID
 	if len(liveAdapters) == 0 {
@@ -500,6 +520,15 @@ func (e *exchange) buildBidResponse(ctx context.Context, liveAdapters []openrtb_
 		}
 	}
 
+	// equivalent to the above
+	// for bidder, result := range adapterBids {
+	// 	if len(result.bids) > 0 {
+	// 		sb := e.makeSeatBid(adapterBids[a], a, adapterExtra, auc)
+	// 		seatBids = append(seatBids, *sb)
+	// 		bidResponse.Cur = adapterBids[a].currency
+	// 	}
+	// }
+
 	bidResponse.SeatBid = seatBids
 
 	if bidResponseExt == nil {
@@ -514,6 +543,7 @@ func (e *exchange) buildBidResponse(ctx context.Context, liveAdapters []openrtb_
 	return bidResponse, err
 }
 
+// still need to review.
 func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest, seatBids map[openrtb_ext.BidderName]*pbsOrtbSeatBid, categoriesFetcher stored_requests.CategoryFetcher, targData *targetData) (map[string]string, map[openrtb_ext.BidderName]*pbsOrtbSeatBid, []string, error) {
 	res := make(map[string]string)
 
@@ -696,10 +726,14 @@ func (e *exchange) makeExtBidResponse(adapterBids map[openrtb_ext.BidderName]*pb
 		ResponseTimeMillis:   make(map[openrtb_ext.BidderName]int, len(adapterBids)),
 		RequestTimeoutMillis: req.TMax,
 	}
+
+	// warning: this is outdated.
 	if req.Test == 1 {
 		bidResponseExt.Debug = &openrtb_ext.ExtResponseDebug{
 			HttpCalls: make(map[openrtb_ext.BidderName][]*openrtb_ext.ExtHttpCall),
 		}
+
+		// this seems wasteful. and it was. gus factored it away. :)
 		if err := json.Unmarshal(resolvedRequest, &bidResponseExt.Debug.ResolvedRequest); err != nil {
 			glog.Errorf("Error unmarshalling bid request snapshot: %v", err)
 		}
@@ -727,11 +761,13 @@ func (e *exchange) makeExtBidResponse(adapterBids map[openrtb_ext.BidderName]*pb
 // Return an openrtb seatBid for a bidder
 // BuildBidResponse is responsible for ensuring nil bid seatbids are not included
 func (e *exchange) makeSeatBid(adapterBid *pbsOrtbSeatBid, adapter openrtb_ext.BidderName, adapterExtra map[openrtb_ext.BidderName]*seatResponseExtra, auc *auction) *openrtb.SeatBid {
-	seatBid := new(openrtb.SeatBid)
+	seatBid := &openrtb.SeatBid{}
 	seatBid.Seat = adapter.String()
 	// Prebid cannot support roadblocking
+	// great... and roadblocking is = only accept my bid if i get all of the impressions (TIL)
 	seatBid.Group = 0
 
+	// copy adapter response ext up to seatbid ext with the bidder name
 	if len(adapterBid.ext) > 0 {
 		sbExt := ExtSeatBid{
 			Bidder: adapterBid.ext,
