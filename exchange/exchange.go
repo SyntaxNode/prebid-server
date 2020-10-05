@@ -543,7 +543,28 @@ func (e *exchange) buildBidResponse(ctx context.Context, liveAdapters []openrtb_
 	return bidResponse, err
 }
 
-// still need to review.
+// inputs:
+// ctx context.Context										// timeout context
+// requestExt openrtb_ext.ExtRequest						// original bid request.ext unmarshalled
+// seatBids map[openrtb_ext.BidderName]*pbsOrtbSeatBid		// result of the auction
+// categoriesFetcher stored_requests.CategoryFetcher		// uhh.. the category fetcher?
+// targData *targetData									// targetData structure. only for amp and mobile.
+
+// outputs:
+// map[string]string										// bidCategory  bidId : key (category + price bucket + duration bucket)
+// map[openrtb_ext.BidderName]*pbsOrtbSeatBid				// adapterBids, modified in memory and then also overwritten
+// []string												// rejections (really a specialized case of error)
+// error
+
+// COULD work for any flow if opted in
+
+// big wins:
+// - rename variables
+// - extract large blocks to methods (like get duration bucket)
+// - change dedupe removal mechanics
+// - maybe not modify the origian seatBids?? or be clear it's modifying them.
+
+// removing duplicate bids based on category, generating key name (bidCategory)
 func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest, seatBids map[openrtb_ext.BidderName]*pbsOrtbSeatBid, categoriesFetcher stored_requests.CategoryFetcher, targData *targetData) (map[string]string, map[openrtb_ext.BidderName]*pbsOrtbSeatBid, []string, error) {
 	res := make(map[string]string)
 
@@ -566,14 +587,15 @@ func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest
 	var rejections []string
 	var translateCategories = true
 
+	// if competitive exclusion is on and category should be included in key name
 	if includeBrandCategory && brandCatExt.WithCategory {
 		if brandCatExt.TranslateCategories != nil {
 			translateCategories = *brandCatExt.TranslateCategories
 		}
-		//if translateCategories is set to false, ignore checking primaryAdServer and publisher
+		//if translateCategories is set to false or not specified, ignore checking primaryAdServer and publisher
 		if translateCategories {
 			//if ext.prebid.targeting.includebrandcategory present but primaryadserver/publisher not present then error out the request right away.
-			primaryAdServer, err = getPrimaryAdServer(brandCatExt.PrimaryAdServer) //1-Freewheel 2-DFP
+			primaryAdServer, err = getPrimaryAdServer(brandCatExt.PrimaryAdServer) //1-Freewheel 2-DFP/Google
 			if err != nil {
 				return res, seatBids, rejections, err
 			}
@@ -581,33 +603,45 @@ func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest
 		}
 	}
 
+	// as we figure out what to dedupe, keep track of what to remove. it's lazy removal.. kinda
 	seatBidsToRemove := make([]openrtb_ext.BidderName, 0)
 
+	// loop through bids from one bidder
 	for bidderName, seatBid := range seatBids {
+
+		// different than seatBidsToRemove, somehow?
 		bidsToRemove := make([]int, 0)
-		for bidInd := range seatBid.bids {
-			bid := seatBid.bids[bidInd]
+
+		// for each bid from the bidder
+		for bidInd, bid := range seatBid.bids {
 			bidID := bid.bid.ID
 			var duration int
 			var category string
-			var pb string
+			var pb string // pb = price bucket
 
+			// read video info
 			if bid.bidVideo != nil {
 				duration = bid.bidVideo.Duration
 				category = bid.bidVideo.PrimaryCategory
 			}
+
+			// set category if not provided by bid.bidVideo.PrimaryCategory
 			if brandCatExt.WithCategory && category == "" {
 				bidIabCat := bid.bid.Cat
-				if len(bidIabCat) != 1 {
+				if len(bidIabCat) != 1 { // we only support mapping one category
 					//TODO: add metrics
 					//on receiving bids from adapters if no unique IAB category is returned  or if no ad server category is returned discard the bid
+
+					// mark to remove later... but why not just remove it now?
 					bidsToRemove = append(bidsToRemove, bidInd)
-					rejections = updateRejections(rejections, bidID, "Bid did not contain a category")
+
+					// add an error, which isn't really an error
+					rejections = updateRejections(rejections, bidID, "Bid did not contain a category") //! nope ! - could also contain too many categories
 					continue
 				}
 				if translateCategories {
 					//if unique IAB category is present then translate it to the adserver category based on mapping file
-					category, err = categoriesFetcher.FetchCategories(ctx, primaryAdServer, publisher, bidIabCat[0])
+					category, err = categoriesFetcher.FetchCategories(ctx, primaryAdServer, publisher, bidIabCat[0]) // hopefully cached... :)
 					if err != nil || category == "" {
 						//TODO: add metrics
 						//if mapping required but no mapping file is found then discard the bid
@@ -622,20 +656,33 @@ func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest
 				}
 			}
 
-			// TODO: consider should we remove bids with zero duration here?
+			// TODO: consider should we remove bids with zero duration here? .. we dunno...?
 
+			/// nooooooooo!!! we're ingoring an error!!!
+
+			// GetCpmStringValue = getPriceBucket
 			pb, _ = GetCpmStringValue(bid.bid.Price, targData.priceGranularity)
 
+			// this entire block = getDurationBucket
 			newDur := duration
 			if len(requestExt.Prebid.Targeting.DurationRangeSec) > 0 {
+				// desired length of ads
 				durationRange := requestExt.Prebid.Targeting.DurationRangeSec
+
 				sort.Ints(durationRange)
 				//if the bid is above the range of the listed durations (and outside the buffer), reject the bid
+
+				// if longer than the lonest allowed duration, reject it
 				if duration > durationRange[len(durationRange)-1] {
 					bidsToRemove = append(bidsToRemove, bidInd)
 					rejections = updateRejections(rejections, bidID, "Bid duration exceeds maximum allowed")
 					continue
 				}
+
+				// smallest acceptable duration that contains the ad duration
+				// - we want 15 seconds, but we get 12 seconds.. then round up to 15
+				// why? because the duration is part of the key name. we need to bucket durations
+				// just like we bucket price / cpms.
 				for _, dur := range durationRange {
 					if duration <= dur {
 						newDur = dur
@@ -644,12 +691,15 @@ func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest
 				}
 			}
 
-			var categoryDuration string
-			if brandCatExt.WithCategory {
+			var categoryDuration string   // this is really just a dedupe key
+			if brandCatExt.WithCategory { // do we add category along with the price bucket and duration bucket
 				categoryDuration = fmt.Sprintf("%s_%s_%ds", pb, category, newDur)
 			} else {
 				categoryDuration = fmt.Sprintf("%s_%ds", pb, newDur)
 			}
+
+			// refactor idea: just keep track of bids which are duplicate and choose a winner at the end
+			// - this is still unfair in the corner case of multiple dupes
 
 			if dupe, ok := dedupe[categoryDuration]; ok {
 				// 50% chance for either bid with duplicate categoryDuration values to be kept
