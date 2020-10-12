@@ -543,8 +543,31 @@ func (e *exchange) buildBidResponse(ctx context.Context, liveAdapters []openrtb_
 	return bidResponse, err
 }
 
-// still need to review.
-func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest, seatBids map[openrtb_ext.BidderName]*pbsOrtbSeatBid, categoriesFetcher stored_requests.CategoryFetcher, targData *targetData) (map[string]string, map[openrtb_ext.BidderName]*pbsOrtbSeatBid, []string, error) {
+// inputs:
+// ctx        			for timeouts
+// requestExt 			from the original request
+// seatBids   			bids from each bidder
+// categoriesFetcher
+// targData				can be empty
+
+// outputs:
+// bidCategory 			map of impression id or bid id -> category id
+// adapterBids			echoing back of seatBids
+// rejections			type of error message
+// err					other kinds of error messages
+func applyCategoryMapping(
+	ctx context.Context,
+	requestExt openrtb_ext.ExtRequest,
+	seatBids map[openrtb_ext.BidderName]*pbsOrtbSeatBid,
+	categoriesFetcher stored_requests.CategoryFetcher,
+	targData *targetData)
+	
+	(map[string]string, 
+	map[openrtb_ext.BidderName]*pbsOrtbSeatBid,
+	[]string,
+	error) {
+
+	// bidCategory map
 	res := make(map[string]string)
 
 	type bidDedupe struct {
@@ -566,6 +589,7 @@ func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest
 	var rejections []string
 	var translateCategories = true
 
+	// if request spiecifies brand category && with category... might want to move the nil check inline
 	if includeBrandCategory && brandCatExt.WithCategory {
 		if brandCatExt.TranslateCategories != nil {
 			translateCategories = *brandCatExt.TranslateCategories
@@ -573,7 +597,7 @@ func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest
 		//if translateCategories is set to false, ignore checking primaryAdServer and publisher
 		if translateCategories {
 			//if ext.prebid.targeting.includebrandcategory present but primaryadserver/publisher not present then error out the request right away.
-			primaryAdServer, err = getPrimaryAdServer(brandCatExt.PrimaryAdServer) //1-Freewheel 2-DFP
+			primaryAdServer, err = getPrimaryAdServer(brandCatExt.PrimaryAdServer) //1-Freewheel 2-DFP (DART (DoubleClick Ad R?? T??) For Publishers) - aka Google Ad Manager -> GAM
 			if err != nil {
 				return res, seatBids, rejections, err
 			}
@@ -583,32 +607,36 @@ func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest
 
 	seatBidsToRemove := make([]openrtb_ext.BidderName, 0)
 
-	for bidderName, seatBid := range seatBids {
+	// remove bids which are duplicate or invalid
+	for bidderName, seatBid := range seatBids { // for each bidder
 		bidsToRemove := make([]int, 0)
-		for bidInd := range seatBid.bids {
+		for bidInd := range seatBid.bids {	// for each bidders's bid
 			bid := seatBid.bids[bidInd]
 			bidID := bid.bid.ID
 			var duration int
 			var category string
-			var pb string
+			var pb string // priceBucket
 
 			if bid.bidVideo != nil {
 				duration = bid.bidVideo.Duration
 				category = bid.bidVideo.PrimaryCategory
 			}
+
+			// translate category - getCategory?
 			if brandCatExt.WithCategory && category == "" {
 				bidIabCat := bid.bid.Cat
+				// maybe checked elsewhere that there can only be 0 or 1 category?
 				if len(bidIabCat) != 1 {
 					//TODO: add metrics
 					//on receiving bids from adapters if no unique IAB category is returned  or if no ad server category is returned discard the bid
 					bidsToRemove = append(bidsToRemove, bidInd)
-					rejections = updateRejections(rejections, bidID, "Bid did not contain a category")
+					rejections = updateRejections(rejections, bidID, "Bid did not contain a category") // potentil refactor to use errors
 					continue
 				}
 				if translateCategories {
 					//if unique IAB category is present then translate it to the adserver category based on mapping file
-					category, err = categoriesFetcher.FetchCategories(ctx, primaryAdServer, publisher, bidIabCat[0])
-					if err != nil || category == "" {
+					category, err := categoriesFetcher.FetchCategories(ctx, primaryAdServer, publisher, bidIabCat[0])
+					if err != nil || category == "" { // the second catgory check if for the output of fetch categories
 						//TODO: add metrics
 						//if mapping required but no mapping file is found then discard the bid
 						bidsToRemove = append(bidsToRemove, bidInd)
@@ -625,7 +653,9 @@ func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest
 			// TODO: consider should we remove bids with zero duration here?
 
 			pb, _ = GetCpmStringValue(bid.bid.Price, targData.priceGranularity)
+			// priceBucket = GetPriceBucket(bid.bid.Price, targData.priceGranularity)  - potential refacotirng
 
+			// duration = GetDurationBucket(....)
 			newDur := duration
 			if len(requestExt.Prebid.Targeting.DurationRangeSec) > 0 {
 				durationRange := requestExt.Prebid.Targeting.DurationRangeSec
@@ -644,6 +674,7 @@ func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest
 				}
 			}
 
+			// targetingValue
 			var categoryDuration string
 			if brandCatExt.WithCategory {
 				categoryDuration = fmt.Sprintf("%s_%s_%ds", pb, category, newDur)
@@ -651,8 +682,21 @@ func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest
 				categoryDuration = fmt.Sprintf("%s_%ds", pb, newDur)
 			}
 
+			// dedupe targeting value
 			if dupe, ok := dedupe[categoryDuration]; ok {
 				// 50% chance for either bid with duplicate categoryDuration values to be kept
+
+				// potential refactoring: isolate the duplicate removal details
+				// if rand.Intn(100) < 50 {
+				// 	dupeTracker.Remove(dupe)
+				// } else {
+				// 	dupeTracker.Remove(this)
+				// }
+				//
+				// or... keep a slice of all duplicates and choose one at random at the end?
+				// - should be fairer, only has to surive 1 random chance instead of x chances
+				// 
+				// prefer code cleanliness / readability over micro-performance unless we have a good reason
 				if rand.Intn(100) < 50 {
 					if dupe.bidderName == bidderName {
 						// An older bid from the current bidder
@@ -708,6 +752,8 @@ func updateRejections(rejections []string, bidID string, reason string) []string
 	return append(rejections, message)
 }
 
+// we need to know the ad server to customize key targeting
+// - others could add on with they know how to generate their keys
 func getPrimaryAdServer(adServerId int) (string, error) {
 	switch adServerId {
 	case 1:
