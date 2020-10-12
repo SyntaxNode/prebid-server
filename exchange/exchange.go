@@ -545,13 +545,13 @@ func (e *exchange) buildBidResponse(ctx context.Context, liveAdapters []openrtb_
 
 // inputs:
 // ctx        			for timeouts
-// requestExt 			from the original request
-// seatBids   			bids from each bidder
+// requestExt 			original bid request.ext unmarshalled
+// seatBids   			bids from each bidder / result of the auction
 // categoriesFetcher
-// targData				can be empty
+// targData				targetData structure. only for amp and mobile.
 
 // outputs:
-// bidCategory 			map of impression id or bid id -> category id
+// bidCategory 			map of bid id -> targeting key value (category + price bucket + duration bucket)
 // adapterBids			echoing back of seatBids
 // rejections			type of error message
 // err					other kinds of error messages
@@ -567,7 +567,14 @@ func applyCategoryMapping(
 	[]string,
 	error) {
 
-	// bidCategory map
+// big wins:
+// - rename variables
+// - extract large blocks to methods (like get duration bucket)
+// - change dedupe removal mechanics
+// - maybe not modify the origian seatBids?? or be clear it's modifying them.
+
+// removing duplicate bids based on category, generating key name (bidCategory)
+func applyCategoryMapping(ctx context.Context, requestExt openrtb_ext.ExtRequest, seatBids map[openrtb_ext.BidderName]*pbsOrtbSeatBid, categoriesFetcher stored_requests.CategoryFetcher, targData *targetData) (map[string]string, map[openrtb_ext.BidderName]*pbsOrtbSeatBid, []string, error) {
 	res := make(map[string]string)
 
 	type bidDedupe struct {
@@ -594,7 +601,7 @@ func applyCategoryMapping(
 		if brandCatExt.TranslateCategories != nil {
 			translateCategories = *brandCatExt.TranslateCategories
 		}
-		//if translateCategories is set to false, ignore checking primaryAdServer and publisher
+		//if translateCategories is set to false or not specified, ignore checking primaryAdServer and publisher
 		if translateCategories {
 			//if ext.prebid.targeting.includebrandcategory present but primaryadserver/publisher not present then error out the request right away.
 			primaryAdServer, err = getPrimaryAdServer(brandCatExt.PrimaryAdServer) //1-Freewheel 2-DFP (DART (DoubleClick Ad R?? T??) For Publishers) - aka Google Ad Manager -> GAM
@@ -605,6 +612,7 @@ func applyCategoryMapping(
 		}
 	}
 
+	// as we figure out what to dedupe, keep track of what to remove. it's lazy removal.. kinda
 	seatBidsToRemove := make([]openrtb_ext.BidderName, 0)
 
 	// remove bids which are duplicate or invalid
@@ -617,6 +625,7 @@ func applyCategoryMapping(
 			var category string
 			var pb string // priceBucket
 
+			// read video info
 			if bid.bidVideo != nil {
 				duration = bid.bidVideo.Duration
 				category = bid.bidVideo.PrimaryCategory
@@ -629,8 +638,12 @@ func applyCategoryMapping(
 				if len(bidIabCat) != 1 {
 					//TODO: add metrics
 					//on receiving bids from adapters if no unique IAB category is returned  or if no ad server category is returned discard the bid
+
+					// mark to remove later... but why not just remove it now?
 					bidsToRemove = append(bidsToRemove, bidInd)
-					rejections = updateRejections(rejections, bidID, "Bid did not contain a category") // potentil refactor to use errors
+
+					// add an error, which isn't really an error
+					rejections = updateRejections(rejections, bidID, "Bid did not contain a category") // could also contain too many categories??
 					continue
 				}
 				if translateCategories {
@@ -650,22 +663,34 @@ func applyCategoryMapping(
 				}
 			}
 
-			// TODO: consider should we remove bids with zero duration here?
+			// TODO: consider should we remove bids with zero duration here? .. we dunno...?
 
+			/// nooooooooo!!! we're ingoring an error!!!
+
+			// GetCpmStringValue = getPriceBucket
 			pb, _ = GetCpmStringValue(bid.bid.Price, targData.priceGranularity)
 			// priceBucket = GetPriceBucket(bid.bid.Price, targData.priceGranularity)  - potential refacotirng
 
-			// duration = GetDurationBucket(....)
+			// this entire block = getDurationBucket()
 			newDur := duration
 			if len(requestExt.Prebid.Targeting.DurationRangeSec) > 0 {
+				// desired length of ads
 				durationRange := requestExt.Prebid.Targeting.DurationRangeSec
+
 				sort.Ints(durationRange)
 				//if the bid is above the range of the listed durations (and outside the buffer), reject the bid
+
+				// if longer than the lonest allowed duration, reject it
 				if duration > durationRange[len(durationRange)-1] {
 					bidsToRemove = append(bidsToRemove, bidInd)
 					rejections = updateRejections(rejections, bidID, "Bid duration exceeds maximum allowed")
 					continue
 				}
+
+				// smallest acceptable duration that contains the ad duration
+				// - we want 15 seconds, but we get 12 seconds.. then round up to 15
+				// why? because the duration is part of the key name. we need to bucket durations
+				// just like we bucket price / cpms.
 				for _, dur := range durationRange {
 					if duration <= dur {
 						newDur = dur
