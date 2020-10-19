@@ -33,6 +33,8 @@ import (
 	"github.com/prebid/prebid-server/usersync"
 )
 
+// probably 5 seconds, measured in milliseconds
+// might want to make this duration instead, so it's more obvious
 var defaultRequestTimeout int64 = 5000
 
 func NewVideoEndpoint(ex exchange.Exchange, validator openrtb_ext.BidderParamValidator, requestsById stored_requests.Fetcher, videoFetcher stored_requests.Fetcher, categories stored_requests.CategoryFetcher, cfg *config.Configuration, met pbsmetrics.MetricsEngine, pbsAnalytics analytics.PBSAnalyticsModule, disabledBidders map[string]string, defReqJSON []byte, bidderMap map[string]openrtb_ext.BidderName, cache prebid_cache_client.Client) (httprouter.Handle, error) {
@@ -41,6 +43,7 @@ func NewVideoEndpoint(ex exchange.Exchange, validator openrtb_ext.BidderParamVal
 		return nil, errors.New("NewVideoEndpoint requires non-nil arguments.")
 	}
 
+	// defRequest = defaultRequest = hasDefaultRequest
 	defRequest := defReqJSON != nil && len(defReqJSON) > 0
 
 	ipValidator := iputil.PublicNetworkIPValidator{
@@ -48,6 +51,8 @@ func NewVideoEndpoint(ex exchange.Exchange, validator openrtb_ext.BidderParamVal
 		IPv6PrivateNetworks: cfg.RequestValidation.IPv6PrivateNetworksParsed,
 	}
 
+	// likely used for debug log activities
+	// possible make the name clearer, debugLogTagRemover
 	videoEndpointRegexp := regexp.MustCompile(`[<>]`)
 
 	return httprouter.Handle((&endpointDeps{
@@ -68,7 +73,7 @@ func NewVideoEndpoint(ex exchange.Exchange, validator openrtb_ext.BidderParamVal
 		ipValidator}).VideoAuctionEndpoint), nil
 }
 
-/*
+/* there be dragons!! this is older and might not be up to date.
 1. Parse "storedrequestid" field from simplified endpoint request body.
 2. If config flag to require that field is set (which it will be for us) and this field is not given then error out here.
 3. Load the stored request JSON for the given storedrequestid, if the id was invalid then error out here.
@@ -93,70 +98,91 @@ func NewVideoEndpoint(ex exchange.Exchange, validator openrtb_ext.BidderParamVal
 */
 func (deps *endpointDeps) VideoAuctionEndpoint(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
+	// maybe extract all this code to some kind of analytics handler / helper?
+	// create analytics video object
 	vo := analytics.VideoObject{
 		Status: http.StatusOK,
 		Errors: make([]error, 0),
 	}
 
-	start := time.Now()
-	labels := pbsmetrics.Labels{
+	// suggestion: create structure of metrics to give hosts ability to fine tune what to turn on and off
+	start := time.Now()          // capture the start time
+	labels := pbsmetrics.Labels{ // populate labels. in our code, labels = metrics info
 		Source:        pbsmetrics.DemandUnknown,
-		RType:         pbsmetrics.ReqTypeVideo,
-		PubID:         pbsmetrics.PublisherUnknown,
-		Browser:       getBrowserName(r),
+		RType:         pbsmetrics.ReqTypeVideo,     // RType = Request Type
+		PubID:         pbsmetrics.PublisherUnknown, // PublisherID.. aka AccountID.
+		Browser:       getBrowserName(r),           // Do we really care about the browser? maybe in the early day with cookie and user sync issues.
 		CookieFlag:    pbsmetrics.CookieFlagUnknown,
 		RequestStatus: pbsmetrics.RequestStatusOK,
 	}
+	///
 
 	debugQuery := r.URL.Query().Get("debug")
-	cacheTTL := int64(3600)
+	cacheTTL := int64(3600) // default to 1 hour. duration.Hours(1)
 	if deps.cfg.CacheURL.DefaultTTLs.Video > 0 {
-		cacheTTL = int64(deps.cfg.CacheURL.DefaultTTLs.Video)
+		cacheTTL = int64(deps.cfg.CacheURL.DefaultTTLs.Video) // use config value instead
 	}
 	debugLog := exchange.DebugLog{
-		Enabled:   strings.EqualFold(debugQuery, "true"),
+		Enabled:   strings.EqualFold(debugQuery, "true"), // EqualFold = CaseInsentivieCompare
 		CacheType: prebid_cache_client.TypeXML,
 		TTL:       cacheTTL,
 		Regexp:    deps.debugLogRegexp,
 	}
 
+	// what we always want to
 	defer func() {
+		// debug if necessary
+		// len(debugLog.CacheKey) > 0 = if set, then debug log is enabled and we have information to store
+		// "scouting rule" => leave the campground cleaner than you found it
 		if len(debugLog.CacheKey) > 0 && vo.VideoResponse == nil {
 			err := putDebugLogError(deps.cache, &debugLog, start)
 			if err != nil {
 				vo.Errors = append(vo.Errors, err)
 			}
 		}
+		// always record metrics
 		deps.metricsEngine.RecordRequest(labels)
 		deps.metricsEngine.RecordRequestTime(labels, time.Since(start))
+
+		// always record analytics
 		deps.analytics.LogVideoObject(&vo)
 	}()
 
+	// specify limited reader, enforced max request size
 	lr := &io.LimitedReader{
 		R: r.Body,
 		N: deps.cfg.MaxRequestSize,
 	}
-	requestJson, err := ioutil.ReadAll(lr)
+	requestJson, err := ioutil.ReadAll(lr) // never use ReadAll!
 	if err != nil {
 		handleError(&labels, w, []error{err}, &vo, &debugLog)
 		return
 	}
 
+	// alternative to ReadAll
+	//  rJson := json.NewDecoder(lr)
+	//  rJson.Decode(r.Header)
+
 	resolvedRequest := requestJson
 	if debugLog.Enabled {
 		debugLog.Data.Request = string(requestJson)
-		if headerBytes, err := json.Marshal(r.Header); err == nil {
+		if headerBytes, err := json.Marshal(r.Header); err == nil { // can also create json decoders which operate on streams
 			debugLog.Data.Headers = string(headerBytes)
 		} else {
 			debugLog.Data.Headers = fmt.Sprintf("Unable to marshal headers data: %s", err.Error())
 		}
 	}
 
+	// scott's ideal flow: video/amp
+	// - setup metrics/analytics
+	// - call out to a helper to parse and prepare and validate the request
+	// request := requestFormatter.PrepareRequest(requestJson)
+
 	//load additional data - stored simplified req
 	storedRequestId, err := getVideoStoredRequestId(requestJson)
 
 	if err != nil {
-		if deps.cfg.VideoStoredRequestRequired {
+		if deps.cfg.VideoStoredRequestRequired { // should we enforce a stored request to be provided
 			handleError(&labels, w, []error{err}, &vo, &debugLog)
 			return
 		}
@@ -181,8 +207,11 @@ func (deps *endpointDeps) VideoAuctionEndpoint(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// update our analytics structure
 	vo.VideoRequest = videoBidReq
 
+	// consider doing the unmarshal just once at the start and then deep clone the bid request instead
+	// - probaby also the same code in amp and auction
 	var bidReq = &openrtb.BidRequest{}
 	if deps.defaultRequest {
 		if err := json.Unmarshal(deps.defReqJSON, bidReq); err != nil {
@@ -193,26 +222,31 @@ func (deps *endpointDeps) VideoAuctionEndpoint(w http.ResponseWriter, r *http.Re
 	}
 
 	//create full open rtb req from full video request
-	mergeData(videoBidReq, bidReq)
+	mergeData(videoBidReq, bidReq) // bidReq = default request, videoBidReq = parsed from the merge of stored procedure and original request
+
 	// If debug query param is set, force the response to enable test flag
 	if debugLog.Enabled {
-		bidReq.Test = 1
+		bidReq.Test = 1 // in all endpoints, currently have debug=true map to test=1.
 	}
 
+	// remove pods that have errors
+	// - might be a chance to move this into parseVideoRequest. maybe?
 	initialPodNumber := len(videoBidReq.PodConfig.Pods)
 	if len(podErrors) > 0 {
-		//remove incorrect pods
+		//remove incorrect pods.
 		videoBidReq = cleanupVideoBidRequest(videoBidReq, podErrors)
 	}
 
 	//create impressions array
 	imps, podErrors := deps.createImpressions(videoBidReq, podErrors)
 
+	// check if all pods have an error, if else - give up
 	if len(podErrors) == initialPodNumber {
 		resPodErr := make([]string, 0)
 		for _, podEr := range podErrors {
 			resPodErr = append(resPodErr, strings.Join(podEr.ErrMsgs, ", "))
 		}
+
 		err := errors.New(fmt.Sprintf("all pods are incorrect: %s", strings.Join(resPodErr, "; ")))
 		errL = append(errL, err)
 		handleError(&labels, w, errL, &vo, &debugLog)
@@ -220,7 +254,7 @@ func (deps *endpointDeps) VideoAuctionEndpoint(w http.ResponseWriter, r *http.Re
 	}
 
 	bidReq.Imp = imps
-	bidReq.ID = "bid_id" //TODO: look at prebid.js
+	bidReq.ID = "bid_id" //TODO: look at prebid.js - how does pbjs do it? maybe just a uuid?
 
 	// Populate any "missing" OpenRTB fields with info from other sources, (e.g. HTTP request headers).
 	deps.setFieldsImplicitly(r, bidReq) // move after merge
@@ -372,6 +406,9 @@ func (deps *endpointDeps) createImpressions(videoReq *openrtb_ext.BidRequestVide
 		storedImpressionId := string(pod.ConfigId)
 		storedImp, errs := deps.loadStoredImp(storedImpressionId)
 		if errs != nil {
+			// might be able to refactor. lot of lines here.
+			// podErr = newPodError("unable to load configid %s, Pod id: %d", storedImpressionId, pod.PodId
+			// something like this.. maybe
 			err := fmt.Sprintf("unable to load configid %s, Pod id: %d", storedImpressionId, pod.PodId)
 			podErr := PodError{}
 			podErr.PodId = pod.PodId
@@ -390,10 +427,11 @@ func (deps *endpointDeps) createImpressions(videoReq *openrtb_ext.BidRequestVide
 		impDivNumber := numImps / len(videoDur)
 
 		impsArray := make([]openrtb.Imp, numImps)
-		for impInd := range impsArray {
+		for impInd := range impsArray { // for i = 0; i < numImps; i++
 			newImp := createImpressionTemplate(storedImp, videoData)
 			impsArray[impInd] = newImp
 			if reqExactDur {
+				// fills remaining impressions with last duration
 				//floor := int(math.Floor(ind/impDivNumber))
 				durationIndex := impInd / impDivNumber
 				if durationIndex > len(videoDur)-1 {
@@ -534,6 +572,9 @@ func (deps *endpointDeps) loadStoredVideoRequest(ctx context.Context, storedRequ
 	return jsonString, errs
 }
 
+//jsonparser = third party package
+// - super super super fast. 100x-1000x faster than json.Unmarshal
+// - does not validate the json!! but that's ok, not needed if previously run though json.Unmarshal
 func getVideoStoredRequestId(request []byte) (string, error) {
 	value, dataType, _, err := jsonparser.Get(request, "storedrequestid")
 	if dataType != jsonparser.String || err != nil {
@@ -542,6 +583,7 @@ func getVideoStoredRequestId(request []byte) (string, error) {
 	return string(value), nil
 }
 
+// move out to a video helper method, in a video package
 func mergeData(videoRequest *openrtb_ext.BidRequestVideo, bidRequest *openrtb.BidRequest) error {
 
 	if videoRequest.Site != nil {
