@@ -257,14 +257,16 @@ func (deps *endpointDeps) VideoAuctionEndpoint(w http.ResponseWriter, r *http.Re
 	bidReq.ID = "bid_id" //TODO: look at prebid.js - how does pbjs do it? maybe just a uuid?
 
 	// Populate any "missing" OpenRTB fields with info from other sources, (e.g. HTTP request headers).
-	deps.setFieldsImplicitly(r, bidReq) // move after merge
+	deps.setFieldsImplicitly(r, bidReq)
 
-	errL = deps.validateRequest(bidReq)
+	errL = deps.validateRequest(bidReq) // come back to this
 	if errortypes.ContainsFatalError(errL) {
 		handleError(&labels, w, errL, &vo, &debugLog)
 		return
 	}
 
+	// make sure the tmax isn't too large
+	// um... a 0 timeout is indefinte. we might want to check on that.
 	ctx := context.Background()
 	timeout := deps.cfg.AuctionTimeouts.LimitAuctionTimeout(time.Duration(bidReq.TMax) * time.Millisecond)
 	if timeout > 0 {
@@ -274,6 +276,7 @@ func (deps *endpointDeps) VideoAuctionEndpoint(w http.ResponseWriter, r *http.Re
 	}
 
 	usersyncs := usersync.ParsePBSCookieFromRequest(r, &(deps.cfg.HostCookie))
+
 	if bidReq.App != nil {
 		labels.Source = pbsmetrics.DemandApp
 		labels.PubID = effectivePubID(bidReq.App.Publisher)
@@ -309,6 +312,7 @@ func (deps *endpointDeps) VideoAuctionEndpoint(w http.ResponseWriter, r *http.Re
 		handleError(&labels, w, errL, &vo, &debugLog)
 		return
 	}
+
 	if bidReq.Test == 1 {
 		bidResp.Ext = response.Ext
 	}
@@ -496,12 +500,14 @@ func minMax(array []int) (int, int) {
 	return min, max
 }
 
+// potentially refactor to live side by side with main targeting key creation, instead of having
+// to parse and do it after the fact
 func buildVideoResponse(bidresponse *openrtb.BidResponse, podErrors []PodError) (*openrtb_ext.BidResponseVideo, error) {
 
 	adPods := make([]*openrtb_ext.AdPod, 0)
 	anyBidsReturned := false
-	for _, seatBid := range bidresponse.SeatBid {
-		for _, bid := range seatBid.Bid {
+	for _, seatBid := range bidresponse.SeatBid { // all bids from a bidder
+		for _, bid := range seatBid.Bid { // the bid from a bidder
 			anyBidsReturned = true
 
 			var tempRespBidExt openrtb_ext.ExtBid
@@ -513,7 +519,7 @@ func buildVideoResponse(bidresponse *openrtb.BidResponse, podErrors []PodError) 
 			}
 
 			impId := bid.ImpID
-			podNum := strings.Split(impId, "_")[0]
+			podNum := strings.Split(impId, "_")[0] // parsing the pod number from the imps we created
 			podId, _ := strconv.ParseInt(podNum, 0, 64)
 
 			videoTargeting := openrtb_ext.VideoTargeting{
@@ -522,19 +528,20 @@ func buildVideoResponse(bidresponse *openrtb.BidResponse, podErrors []PodError) 
 				HbCacheID:  tempRespBidExt.Prebid.Targeting[string(openrtb_ext.HbVastCacheKey)],
 			}
 
-			adPod := findAdPod(podId, adPods)
+			adPod := findAdPod(podId, adPods) // O(n) -> O(1) with a map
 			if adPod == nil {
 				adPod = &openrtb_ext.AdPod{
 					PodId:     podId,
 					Targeting: make([]openrtb_ext.VideoTargeting, 0, 0),
 				}
-				adPods = append(adPods, adPod)
+				adPods = append(adPods, adPod) // simpler complexity with a map.. i think????
 			}
 			adPod.Targeting = append(adPod.Targeting, videoTargeting)
 
 		}
 	}
 
+	// - we checked, the logic is sound.. the code could be improved a bit for clarity
 	//check if there are any bids in response.
 	//if there are no bids - empty response should be returned, no cache errors
 	if len(adPods) == 0 && anyBidsReturned {
@@ -557,6 +564,7 @@ func buildVideoResponse(bidresponse *openrtb.BidResponse, podErrors []PodError) 
 	return &openrtb_ext.BidResponseVideo{AdPods: adPods}, nil
 }
 
+// potential for performance improvement, since we control creation of the adpods. maybe a map instead?
 func findAdPod(podInd int64, pods []*openrtb_ext.AdPod) *openrtb_ext.AdPod {
 	for _, pod := range pods {
 		if pod.PodId == podInd {
@@ -697,6 +705,7 @@ func (deps *endpointDeps) parseVideoRequest(request []byte, headers http.Header)
 		return
 	}
 
+	// this can likely me merged into `mergeData` wiht the encoding
 	//if Device.UA is not present in request body, init it with user-agent from request header if it's present
 	if req.Device.UA == "" {
 		ua := headers.Get("User-Agent")

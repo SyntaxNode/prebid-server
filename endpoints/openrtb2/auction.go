@@ -952,7 +952,7 @@ func (deps *endpointDeps) setFieldsImplicitly(httpReq *http.Request, bidReq *ope
 	setDeviceImplicitly(httpReq, bidReq, deps.privateNetworkIPValidator)
 
 	// Per the OpenRTB spec: A bid request must not contain both a Site and an App object.
-	if bidReq.App == nil {
+	if bidReq.App == nil { // perhaps better written as 'bidReq.Site != nil'
 		setSiteImplicitly(httpReq, bidReq)
 	}
 	setImpsImplicitly(httpReq, bidReq.Imp)
@@ -969,6 +969,8 @@ func setDeviceImplicitly(httpReq *http.Request, bidReq *openrtb.BidRequest, ipVa
 // setAuctionTypeImplicitly sets the auction type to 1 if it wasn't on the request,
 // since header bidding is generally a first-price auction.
 func setAuctionTypeImplicitly(bidReq *openrtb.BidRequest) {
+	// default to 1, because we don't perform the final auction so we can't support second price auction
+
 	if bidReq.AT == 0 {
 		bidReq.AT = 1
 	}
@@ -997,7 +999,7 @@ func setSiteImplicitly(httpReq *http.Request, bidReq *openrtb.BidRequest) {
 		}
 	}
 	if bidReq.Site != nil {
-		setAmpExt(bidReq.Site, "0")
+		setAmpExt(bidReq.Site, "0") // why is this not in the amp endpoint? it looks like we assume not amp here, but what if it is amp?
 	}
 }
 

@@ -542,7 +542,7 @@ func defaultRequestExt(req *openrtb.BidRequest) (errs []error) {
 func setAmpExt(site *openrtb.Site, value string) {
 	if len(site.Ext) > 0 {
 		if _, dataType, _, _ := jsonparser.Get(site.Ext, "amp"); dataType == jsonparser.NotExist {
-			if val, err := jsonparser.Set(site.Ext, []byte(value), "amp"); err == nil {
+			if val, err := jsonparser.Set(site.Ext, []byte(value), "amp"); err == nil { // NOOOOO!!!!!! This will sometimes fail!!!
 				site.Ext = val
 			}
 		}
