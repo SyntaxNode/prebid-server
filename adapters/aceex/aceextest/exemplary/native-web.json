@@ -129,9 +129,9 @@
             "crid": "20",
             "adomain": [
               "awesome.com"
-            ]
-          },
-          "type": "native"
+            ],
+            "mtype": 4
+          }
         }
       ]
     }

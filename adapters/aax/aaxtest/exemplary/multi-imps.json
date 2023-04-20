@@ -119,9 +119,9 @@
                         "adm": "some-test-ad",
                         "crid": "test-crid",
                         "w": 320,
-                        "h": 50
-                    },
-                    "type": "banner"
+                        "h": 50,
+                        "mtype": 1
+                    }
                 }
             ]
         }

@@ -222,23 +222,28 @@ func (a *TtxAdapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequ
 
 	for _, sb := range bidResp.SeatBid {
 		for i := range sb.Bid {
-			var bidExt bidExt
-			var bidType openrtb_ext.BidType
-
-			if err := json.Unmarshal(sb.Bid[i].Ext, &bidExt); err != nil {
-				bidType = openrtb_ext.BidTypeBanner
-			} else {
-				bidType = getBidType(bidExt)
-			}
-
+			fallbackToMTypeFromExt(&sb.Bid[i])
 			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-				Bid:     &sb.Bid[i],
-				BidType: bidType,
+				Bid: &sb.Bid[i],
 			})
 		}
 	}
 	return bidResponse, nil
+}
 
+func fallbackToMTypeFromExt(bid *openrtb2.Bid) {
+	// use mtype from bid, if available
+	if bid.MType != 0 {
+		return
+	}
+
+	// use mtype from bid.ext, if valid, or fallback to banner
+	var bidExt bidExt
+	if err := json.Unmarshal(bid.Ext, &bidExt); err == nil {
+		bid.MType = getMType(bidExt)
+	} else {
+		bid.MType = openrtb2.MarkupBanner
+	}
 }
 
 func validateVideoParams(video *openrtb2.Video, prod string) (*openrtb2.Video, error) {
@@ -269,12 +274,12 @@ func validateVideoParams(video *openrtb2.Video, prod string) (*openrtb2.Video, e
 	return &videoCopy, nil
 }
 
-func getBidType(ext bidExt) openrtb_ext.BidType {
+func getMType(ext bidExt) openrtb2.MarkupType {
 	if ext.Ttx.MediaType == "video" {
-		return openrtb_ext.BidTypeVideo
+		return openrtb2.MarkupVideo
 	}
 
-	return openrtb_ext.BidTypeBanner
+	return openrtb2.MarkupBanner
 }
 
 // Builder builds a new instance of the 33Across adapter for the given bidder with the given config.

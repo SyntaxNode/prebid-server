@@ -99,9 +99,9 @@
             "adm": "some-test-vast-ad",
             "crid": "crid_10",
             "w": 728,
-            "h": 90
-          },
-          "type": "banner"
+            "h": 90,
+            "mtype": 1
+          }
         }
       ]
     }

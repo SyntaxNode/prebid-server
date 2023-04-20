@@ -165,26 +165,16 @@ func (a *adapter) MakeBids(
 	bidResponse := adapters.NewBidderResponseWithBidsCapacity(len(bidResp.SeatBid[0].Bid))
 	sb := bidResp.SeatBid[0]
 
-	for _, bid := range sb.Bid {
+	for i := range sb.Bid {
+		adapters.FallbackToMTypeFromImpWithDefault(
+			&sb.Bid[i],
+			openRTBRequest.Imp,
+			[]openrtb2.MarkupType{openrtb2.MarkupVideo, openrtb2.MarkupNative, openrtb2.MarkupBanner},
+			openrtb2.MarkupBanner)
+
 		bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-			Bid:     &bid,
-			BidType: getMediaTypeForImp(bid.ImpID, openRTBRequest.Imp),
+			Bid: &sb.Bid[i],
 		})
 	}
 	return bidResponse, nil
-}
-
-func getMediaTypeForImp(impId string, imps []openrtb2.Imp) openrtb_ext.BidType {
-	mediaType := openrtb_ext.BidTypeBanner
-	for _, imp := range imps {
-		if imp.ID == impId {
-			if imp.Video != nil {
-				mediaType = openrtb_ext.BidTypeVideo
-			} else if imp.Native != nil {
-				mediaType = openrtb_ext.BidTypeNative
-			}
-			return mediaType
-		}
-	}
-	return mediaType
 }

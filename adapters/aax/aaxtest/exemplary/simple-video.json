@@ -91,9 +91,9 @@
                         "adm": "some-test-ad",
                         "crid": "test-crid",
                         "w": 320,
-                        "h": 480
-                    },
-                    "type": "video"
+                        "h": 480,
+                        "mtype": 2
+                    }
                 }
             ]
         }

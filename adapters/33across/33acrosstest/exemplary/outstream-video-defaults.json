@@ -102,13 +102,13 @@
             "crid": "crid_10",
             "w": 728,
             "h": 90,
+            "mtype": 2,
             "ext": {
               "ttx": {
                 "mediaType": "video"
               }
             }
-          },
-          "type": "video"
+          }
         }
       ]
     }

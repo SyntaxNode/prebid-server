@@ -279,13 +279,13 @@
             "crid": "crid_10",
             "w": 728,
             "h": 90,
+            "mtype": 1,
             "ext": {
               "ttx": {
                 "mediaType": "banner"
               }
             }
-          },
-          "type": "banner"
+          }
         },
         {
           "bid": {
@@ -296,13 +296,13 @@
             "crid": "crid_10",
             "w": 728,
             "h": 90,
+            "mtype": 1,
             "ext": {
               "ttx": {
                 "mediaType": "banner"
               }
             }
-          },
-          "type": "banner"
+          }
         }
       ]
     },
@@ -318,13 +318,13 @@
             "crid": "crid_10",
             "w": 728,
             "h": 90,
+            "mtype": 1,
             "ext": {
               "ttx": {
                 "mediaType": "banner"
               }
             }
-          },
-          "type": "banner"
+          }
         }
       ]
     },
@@ -340,13 +340,13 @@
             "crid": "crid_10",
             "w": 728,
             "h": 90,
+            "mtype": 1,
             "ext": {
               "ttx": {
                 "mediaType": "banner"
               }
             }
-          },
-          "type": "banner"
+          }
         }
       ]
     }

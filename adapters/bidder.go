@@ -98,7 +98,6 @@ func NewBidderResponse() *BidderResponse {
 type TypedBid struct {
 	Bid          *openrtb2.Bid
 	BidMeta      *openrtb_ext.ExtBidPrebidMeta
-	BidType      openrtb_ext.BidType
 	BidVideo     *openrtb_ext.ExtBidPrebidVideo
 	DealPriority int
 	Seat         openrtb_ext.BidderName
