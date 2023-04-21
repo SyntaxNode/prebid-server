@@ -110,6 +110,7 @@
 			  "crid": "29681110",
 			  "w": 300,
 			  "h": 250,
+              "mtype": 2,
 			  "ext": {
 				"appnexus": {
 				  "brand_id": 99,
@@ -121,8 +122,7 @@
 				  "deal_priority": 5
 				}
 			  }
-			},
-			"type": "video"
+			}
 		  }
 		]
 	  }

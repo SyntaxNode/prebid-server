@@ -105,7 +105,6 @@
                   "h": 50
                 }
               ],
-              "type": "banner",
               "seat": "acuityads"
             }
           ],
@@ -134,9 +133,9 @@
               "awesome.com"
             ],
             "w": 320,
-            "h": 50
-          },
-          "type": "banner"
+            "h": 50,
+            "mtype": 1
+          }
         }
       ]
     }

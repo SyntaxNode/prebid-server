@@ -187,8 +187,7 @@ func (a *adapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest
 				continue
 			}
 
-			bidType, err := getMediaTypeForBid(&bidExt)
-			if err != nil {
+			if err := fallbackToMTypeFromExt(&bid, &bidExt); err != nil {
 				errs = append(errs, err)
 				continue
 			}
@@ -198,12 +197,11 @@ func (a *adapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest
 				bid.Cat = []string{iabCategory}
 			} else if len(bid.Cat) > 1 {
 				//create empty categories array to force bid to be rejected
-				bid.Cat = make([]string, 0)
+				bid.Cat = []string{}
 			}
 
 			bidderResponse.Bids = append(bidderResponse.Bids, &adapters.TypedBid{
 				Bid:          &bid,
-				BidType:      bidType,
 				BidVideo:     &openrtb_ext.ExtBidPrebidVideo{Duration: bidExt.Appnexus.CreativeInfo.Video.Duration},
 				DealPriority: bidExt.Appnexus.DealPriority,
 			})
@@ -379,19 +377,29 @@ func makeKeywordStr(keywords []*openrtb_ext.ExtImpAppnexusKeyVal) string {
 	return strings.Join(kvs, ",")
 }
 
-// getMediaTypeForBid determines which type of bid.
-func getMediaTypeForBid(bid *appnexusBidExt) (openrtb_ext.BidType, error) {
-	switch bid.Appnexus.BidType {
+// fallbackToMTypeFromExt sets the bid type.
+func fallbackToMTypeFromExt(bid *openrtb2.Bid, ext *appnexusBidExt) error {
+	// use mtype from bid, if available
+	if bid.MType != 0 {
+		return nil
+	}
+
+	// use mtype from bid.ext.appnexus.bidtype
+	switch ext.Appnexus.BidType {
 	case 0:
-		return openrtb_ext.BidTypeBanner, nil
+		bid.MType = openrtb2.MarkupBanner
+		return nil
 	case 1:
-		return openrtb_ext.BidTypeVideo, nil
+		bid.MType = openrtb2.MarkupVideo
+		return nil
 	case 2:
-		return openrtb_ext.BidTypeAudio, nil
+		bid.MType = openrtb2.MarkupAudio
+		return nil
 	case 3:
-		return openrtb_ext.BidTypeNative, nil
+		bid.MType = openrtb2.MarkupNative
+		return nil
 	default:
-		return "", fmt.Errorf("Unrecognized bid_ad_type in response from appnexus: %d", bid.Appnexus.BidType)
+		return fmt.Errorf("Unrecognized bid_ad_type in response from appnexus: %d", ext.Appnexus.BidType)
 	}
 }
 

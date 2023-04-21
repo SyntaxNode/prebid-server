@@ -153,9 +153,9 @@
                 "crid": "Dummy_supership.jp",
                 "w": 300,
                 "h": 250,
-                "dealid": "test-deal-id"
-              },
-              "type": "banner"
+                "dealid": "test-deal-id",
+                "mtype": 1
+              }
             }
           ]
         }

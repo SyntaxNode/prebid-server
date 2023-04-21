@@ -131,6 +131,7 @@
             "cat": [
               "IAB3-1"
             ],
+            "mtype": 4,
             "ext": {
               "appnexus": {
                 "brand_id": 350,
@@ -141,8 +142,7 @@
                 "deal_priority": 5
               }
             }
-          },
-          "type": "native"
+          }
         }
       ]
     }

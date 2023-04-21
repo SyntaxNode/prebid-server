@@ -124,6 +124,7 @@
               "w": 300,
               "h": 250,
               "cat": ["IAB20-3"],
+              "mtype": 1,
               "ext": {
                 "appnexus": {
                   "brand_id": 1,
@@ -135,8 +136,7 @@
                   "deal_priority": 5
                 }
               }
-            },
-            "type": "banner"
+            }
           }
         ]
       }

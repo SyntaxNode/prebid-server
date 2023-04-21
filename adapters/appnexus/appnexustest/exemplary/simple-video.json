@@ -112,6 +112,7 @@
 			  "w": 300,
 			  "h": 250,
 			  "cat": ["IAB5-3"],
+              "mtype": 2,
 			  "ext": {
 				"appnexus": {
 				  "brand_id": 9,
@@ -123,8 +124,7 @@
 				  "deal_priority": 5
 				}
 			  }
-			},
-			"type": "video"
+			}
 		  }
 		]
 	  }

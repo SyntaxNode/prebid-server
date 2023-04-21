@@ -12,6 +12,7 @@ import (
 	"github.com/prebid/prebid-server/errortypes"
 	"github.com/prebid/prebid-server/macros"
 	"github.com/prebid/prebid-server/openrtb_ext"
+	"github.com/prebid/prebid-server/util/bidutil"
 )
 
 type adapter struct {
@@ -166,10 +167,10 @@ func (a *adapter) MakeBids(
 	sb := bidResp.SeatBid[0]
 
 	for i := range sb.Bid {
-		adapters.FallbackToMTypeFromImpWithDefault(
+		bidutil.FallbackToMTypeFromImpWithDefault(
 			&sb.Bid[i],
 			openRTBRequest.Imp,
-			[]openrtb2.MarkupType{openrtb2.MarkupVideo, openrtb2.MarkupNative, openrtb2.MarkupBanner},
+			bidutil.MTypePriority{openrtb2.MarkupVideo, openrtb2.MarkupNative, openrtb2.MarkupBanner},
 			openrtb2.MarkupBanner)
 
 		bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
