@@ -256,28 +256,28 @@ func (a *auction) doCache(ctx context.Context, cache prebid_cache_client.Client,
 						toCache = append(toCache, prebid_cache_client.Cacheable{
 							Type:       prebid_cache_client.TypeJSON,
 							Data:       jsonBytes,
-							TTLSeconds: cacheTTL(expByImp[impID], topBid.Bid.Exp, defTTL(topBid.BidType, defaultTTLs), ttlBuffer),
+							TTLSeconds: cacheTTL(expByImp[impID], topBid.Bid.Exp, defTTL(topBid.Bid.MType, defaultTTLs), ttlBuffer),
 						})
 						bidIndices[len(toCache)-1] = topBid.Bid
 					} else {
 						errs = append(errs, err)
 					}
 				}
-				if vast && topBid.BidType == openrtb_ext.BidTypeVideo {
+				if vast && topBid.Bid.MType == openrtb2.MarkupVideo {
 					vastXML := makeVAST(topBid.Bid)
 					if jsonBytes, err := json.Marshal(vastXML); err == nil {
 						if useCustomCacheKey {
 							toCache = append(toCache, prebid_cache_client.Cacheable{
 								Type:       prebid_cache_client.TypeXML,
 								Data:       jsonBytes,
-								TTLSeconds: cacheTTL(expByImp[impID], topBid.Bid.Exp, defTTL(topBid.BidType, defaultTTLs), ttlBuffer),
+								TTLSeconds: cacheTTL(expByImp[impID], topBid.Bid.Exp, defTTL(topBid.Bid.MType, defaultTTLs), ttlBuffer),
 								Key:        customCacheKey,
 							})
 						} else {
 							toCache = append(toCache, prebid_cache_client.Cacheable{
 								Type:       prebid_cache_client.TypeXML,
 								Data:       jsonBytes,
-								TTLSeconds: cacheTTL(expByImp[impID], topBid.Bid.Exp, defTTL(topBid.BidType, defaultTTLs), ttlBuffer),
+								TTLSeconds: cacheTTL(expByImp[impID], topBid.Bid.Exp, defTTL(topBid.Bid.MType, defaultTTLs), ttlBuffer),
 							})
 						}
 						vastIndices[len(toCache)-1] = topBid.Bid
@@ -377,16 +377,16 @@ func addBuffer(base int64, buffer int64) int64 {
 	return base + buffer
 }
 
-func defTTL(bidType openrtb_ext.BidType, defaultTTLs *config.DefaultTTLs) (ttl int64) {
-	switch bidType {
-	case openrtb_ext.BidTypeBanner:
+func defTTL(t openrtb2.MarkupType, defaultTTLs *config.DefaultTTLs) (ttl int64) {
+	switch t {
+	case openrtb2.MarkupBanner:
 		return int64(defaultTTLs.Banner)
-	case openrtb_ext.BidTypeVideo:
+	case openrtb2.MarkupVideo:
 		return int64(defaultTTLs.Video)
-	case openrtb_ext.BidTypeNative:
-		return int64(defaultTTLs.Native)
-	case openrtb_ext.BidTypeAudio:
+	case openrtb2.MarkupAudio:
 		return int64(defaultTTLs.Audio)
+	case openrtb2.MarkupNative:
+		return int64(defaultTTLs.Native)
 	}
 	return 0
 }

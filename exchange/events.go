@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/prebid/openrtb/v19/openrtb2"
 	"github.com/prebid/prebid-server/exchange/entities"
 	jsonpatch "gopkg.in/evanphx/json-patch.v4"
 
@@ -66,7 +67,7 @@ func (ev *eventTracking) isModifyingVASTXMLAllowed(bidderName string) bool {
 // modifyBidVAST injects event Impression url if needed, otherwise returns original VAST string
 func (ev *eventTracking) modifyBidVAST(pbsBid *entities.PbsOrtbBid, bidderName openrtb_ext.BidderName) {
 	bid := pbsBid.Bid
-	if pbsBid.BidType != openrtb_ext.BidTypeVideo || len(bid.AdM) == 0 && len(bid.NURL) == 0 {
+	if pbsBid.Bid.MType != openrtb2.MarkupVideo || len(bid.AdM) == 0 && len(bid.NURL) == 0 {
 		return
 	}
 	vastXML := makeVAST(bid)
@@ -81,7 +82,7 @@ func (ev *eventTracking) modifyBidVAST(pbsBid *entities.PbsOrtbBid, bidderName o
 
 // modifyBidJSON injects "wurl" (win) event url if needed, otherwise returns original json
 func (ev *eventTracking) modifyBidJSON(pbsBid *entities.PbsOrtbBid, bidderName openrtb_ext.BidderName, jsonBytes []byte) ([]byte, error) {
-	if !(ev.enabledForAccount || ev.enabledForRequest) || pbsBid.BidType == openrtb_ext.BidTypeVideo {
+	if !(ev.enabledForAccount || ev.enabledForRequest) || pbsBid.Bid.MType != openrtb2.MarkupVideo {
 		return jsonBytes, nil
 	}
 	var winEventURL string
@@ -104,7 +105,7 @@ func (ev *eventTracking) modifyBidJSON(pbsBid *entities.PbsOrtbBid, bidderName o
 
 // makeBidExtEvents make the data for bid.ext.prebid.events if needed, otherwise returns nil
 func (ev *eventTracking) makeBidExtEvents(pbsBid *entities.PbsOrtbBid, bidderName openrtb_ext.BidderName) *openrtb_ext.ExtBidPrebidEvents {
-	if !(ev.enabledForAccount || ev.enabledForRequest) || pbsBid.BidType == openrtb_ext.BidTypeVideo {
+	if !(ev.enabledForAccount || ev.enabledForRequest) || pbsBid.Bid.MType != openrtb2.MarkupVideo {
 		return nil
 	}
 	return &openrtb_ext.ExtBidPrebidEvents{

@@ -198,8 +198,7 @@ func runCacheSpec(t *testing.T, fileDisplayName string, specData *cacheSpec) {
 	// Traverse through the bid list found in the parsed in Json file
 	for _, pbsBid := range specData.PbsBids {
 		bid = &entities.PbsOrtbBid{
-			Bid:     pbsBid.Bid,
-			BidType: pbsBid.BidType,
+			Bid: pbsBid.Bid,
 		}
 		cpm := bid.Bid.Price
 

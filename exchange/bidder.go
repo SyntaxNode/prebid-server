@@ -259,7 +259,7 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest Bidde
 				// Only do this for request from mobile app
 				if bidderRequest.BidRequest.App != nil {
 					for i := 0; i < len(bidResponse.Bids); i++ {
-						if bidResponse.Bids[i].BidType == openrtb_ext.BidTypeNative {
+						if bidResponse.Bids[i].Bid.MType == openrtb2.MarkupNative {
 							nativeMarkup, moreErrs := addNativeTypes(bidResponse.Bids[i].Bid, bidderRequest.BidRequest)
 							errs = append(errs, moreErrs...)
 
@@ -351,7 +351,6 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest Bidde
 						seatBidMap[bidderName].Bids = append(seatBidMap[bidderName].Bids, &entities.PbsOrtbBid{
 							Bid:            bidResponse.Bids[i].Bid,
 							BidMeta:        bidResponse.Bids[i].BidMeta,
-							BidType:        bidResponse.Bids[i].BidType,
 							BidVideo:       bidResponse.Bids[i].BidVideo,
 							DealPriority:   bidResponse.Bids[i].DealPriority,
 							OriginalBidCPM: originalBidCpm,

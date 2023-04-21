@@ -80,15 +80,15 @@ func TestSingleBidder(t *testing.T) {
 				{
 					Bid: &openrtb2.Bid{
 						Price: firstInitialPrice,
+						MType: openrtb2.MarkupBanner,
 					},
-					BidType:      openrtb_ext.BidTypeBanner,
 					DealPriority: 4,
 				},
 				{
 					Bid: &openrtb2.Bid{
 						Price: secondInitialPrice,
+						MType: openrtb2.MarkupVideo,
 					},
-					BidType:      openrtb_ext.BidTypeVideo,
 					DealPriority: 5,
 				},
 			},
@@ -138,11 +138,11 @@ func TestSingleBidder(t *testing.T) {
 			if typedBid.Bid != seatBid.Bids[index].Bid {
 				t.Errorf("Bid %d did not point to the same bid returned by the Bidder.", index)
 			}
-			if typedBid.BidType != seatBid.Bids[index].BidType {
-				t.Errorf("Bid %d did not have the right type. Expected %s, got %s", index, typedBid.BidType, seatBid.Bids[index].BidType)
+			if typedBid.Bid.MType != seatBid.Bids[index].Bid.MType {
+				t.Errorf("Bid %d did not have the right type. Expected %s, got %s", index, typedBid.Bid.MType, seatBid.Bids[index].Bid.MType)
 			}
 			if typedBid.DealPriority != seatBid.Bids[index].DealPriority {
-				t.Errorf("Bid %d did not have the right deal priority. Expected %s, got %s", index, typedBid.BidType, seatBid.Bids[index].BidType)
+				t.Errorf("Bid %d did not have the right deal priority. Expected %s, got %s", index, typedBid.Bid.MType, seatBid.Bids[index].Bid.MType)
 			}
 		}
 		bidAdjustment := bidAdjustments["test"]
@@ -202,15 +202,15 @@ func TestSingleBidderGzip(t *testing.T) {
 				{
 					Bid: &openrtb2.Bid{
 						Price: firstInitialPrice,
+						MType: openrtb2.MarkupBanner,
 					},
-					BidType:      openrtb_ext.BidTypeBanner,
 					DealPriority: 4,
 				},
 				{
 					Bid: &openrtb2.Bid{
 						Price: secondInitialPrice,
+						MType: openrtb2.MarkupVideo,
 					},
-					BidType:      openrtb_ext.BidTypeVideo,
 					DealPriority: 5,
 				},
 			},
@@ -260,11 +260,11 @@ func TestSingleBidderGzip(t *testing.T) {
 			if typedBid.Bid != seatBid.Bids[index].Bid {
 				t.Errorf("Bid %d did not point to the same bid returned by the Bidder.", index)
 			}
-			if typedBid.BidType != seatBid.Bids[index].BidType {
-				t.Errorf("Bid %d did not have the right type. Expected %s, got %s", index, typedBid.BidType, seatBid.Bids[index].BidType)
+			if typedBid.Bid.MType != seatBid.Bids[index].Bid.MType {
+				t.Errorf("Bid %d did not have the right type. Expected %s, got %s", index, typedBid.Bid.MType, seatBid.Bids[index].Bid.MType)
 			}
 			if typedBid.DealPriority != seatBid.Bids[index].DealPriority {
-				t.Errorf("Bid %d did not have the right deal priority. Expected %s, got %s", index, typedBid.BidType, seatBid.Bids[index].BidType)
+				t.Errorf("Bid %d did not have the right deal priority. Expected %s, got %s", index, typedBid.Bid.MType, seatBid.Bids[index].Bid.MType)
 			}
 		}
 		bidAdjustment := bidAdjustments["test"]
@@ -464,12 +464,14 @@ func TestMultiBidder(t *testing.T) {
 	mockBidderResponse := &adapters.BidderResponse{
 		Bids: []*adapters.TypedBid{
 			{
-				Bid:     &openrtb2.Bid{},
-				BidType: openrtb_ext.BidTypeBanner,
+				Bid: &openrtb2.Bid{
+					MType: openrtb2.MarkupBanner,
+				},
 			},
 			{
-				Bid:     &openrtb2.Bid{},
-				BidType: openrtb_ext.BidTypeVideo,
+				Bid: &openrtb2.Bid{
+					MType: openrtb2.MarkupVideo,
+				},
 			},
 		},
 	}
@@ -827,8 +829,8 @@ func TestMultiCurrencies(t *testing.T) {
 					{
 						Bid: &openrtb2.Bid{
 							Price: bid.price,
+							MType: openrtb2.MarkupBanner,
 						},
-						BidType: openrtb_ext.BidTypeBanner,
 					},
 				},
 				Currency: bid.currency,
@@ -1005,8 +1007,9 @@ func TestMultiCurrencies_RateConverterNotSet(t *testing.T) {
 			mockBidderResponses[i] = &adapters.BidderResponse{
 				Bids: []*adapters.TypedBid{
 					{
-						Bid:     &openrtb2.Bid{},
-						BidType: openrtb_ext.BidTypeBanner,
+						Bid: &openrtb2.Bid{
+							MType: openrtb2.MarkupBanner,
+						},
 					},
 				},
 				Currency: cur,
@@ -1175,8 +1178,9 @@ func TestMultiCurrencies_RequestCurrencyPick(t *testing.T) {
 			{
 				Bids: []*adapters.TypedBid{
 					{
-						Bid:     &openrtb2.Bid{},
-						BidType: openrtb_ext.BidTypeBanner,
+						Bid: &openrtb2.Bid{
+							MType: openrtb2.MarkupBanner,
+						},
 					},
 				},
 				Currency: tc.bidResponsesCurrency,
@@ -1468,8 +1472,8 @@ func TestMobileNativeTypes(t *testing.T) {
 							ImpID: "some-imp-id",
 							AdM:   "{\"assets\":[{\"id\":2,\"img\":{\"url\":\"http://vcdn.adnxs.com/p/creative-image/f8/7f/0f/13/f87f0f13-230c-4f05-8087-db9216e393de.jpg\",\"w\":989,\"h\":742,\"ext\":{\"appnexus\":{\"prevent_crop\":0}}}},{\"id\":1,\"title\":{\"text\":\"This is a Prebid Native Creative\"}},{\"id\":3,\"data\":{\"value\":\"Prebid.org\"}},{\"id\":4,\"data\":{\"value\":\"This is a Prebid Native Creative.  There are many like it, but this one is mine.\"}}],\"link\":{\"url\":\"http://some-url.com\"},\"imptrackers\":[\"http://someimptracker.com\"],\"jstracker\":\"some-js-tracker\"}",
 							Price: 10,
+							MType: openrtb2.MarkupNative,
 						},
-						BidType: openrtb_ext.BidTypeNative,
 					},
 				},
 			},
@@ -1495,8 +1499,8 @@ func TestMobileNativeTypes(t *testing.T) {
 							ImpID: "some-imp-id",
 							AdM:   "{\"some-diff-markup\":\"creative\"}",
 							Price: 10,
+							MType: openrtb2.MarkupNative,
 						},
-						BidType: openrtb_ext.BidTypeNative,
 					},
 				},
 			},
@@ -2245,9 +2249,9 @@ func TestRequestBidsWithAdsCertsSigner(t *testing.T) {
 		Bids: []*adapters.TypedBid{
 			{
 				Bid: &openrtb2.Bid{
-					ID: "bidId",
+					ID:    "bidId",
+					MType: openrtb2.MarkupBanner,
 				},
-				BidType:      openrtb_ext.BidTypeBanner,
 				DealPriority: 4,
 			},
 		},
@@ -2320,8 +2324,7 @@ func (bidder *goodSingleBidderWithStoredBidResp) MakeBids(internalRequest *openr
 	for _, sb := range bidResp.SeatBid {
 		for i := range sb.Bid {
 			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-				Bid:     &sb.Bid[i],
-				BidType: openrtb_ext.BidTypeVideo,
+				Bid: &sb.Bid[i],
 			})
 		}
 	}
@@ -2421,17 +2424,17 @@ func TestExtraBid(t *testing.T) {
 			Bids: []*adapters.TypedBid{
 				{
 					Bid: &openrtb2.Bid{
-						ID: "pubmaticImp1",
+						ID:    "pubmaticImp1",
+						MType: openrtb2.MarkupBanner,
 					},
-					BidType:      openrtb_ext.BidTypeBanner,
 					DealPriority: 4,
 					Seat:         "pubmatic",
 				},
 				{
 					Bid: &openrtb2.Bid{
-						ID: "groupmImp1",
+						ID:    "groupmImp1",
+						MType: openrtb2.MarkupVideo,
 					},
-					BidType:      openrtb_ext.BidTypeVideo,
 					DealPriority: 5,
 					Seat:         "groupm",
 				},
@@ -2443,9 +2446,8 @@ func TestExtraBid(t *testing.T) {
 		{
 			HttpCalls: []*openrtb_ext.ExtHttpCall{},
 			Bids: []*entities.PbsOrtbBid{{
-				Bid:            &openrtb2.Bid{ID: "groupmImp1"},
+				Bid:            &openrtb2.Bid{ID: "groupmImp1", MType: openrtb2.MarkupVideo},
 				DealPriority:   5,
-				BidType:        openrtb_ext.BidTypeVideo,
 				OriginalBidCur: "USD",
 				BidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
 			}},
@@ -2455,9 +2457,8 @@ func TestExtraBid(t *testing.T) {
 		{
 			HttpCalls: []*openrtb_ext.ExtHttpCall{},
 			Bids: []*entities.PbsOrtbBid{{
-				Bid:            &openrtb2.Bid{ID: "pubmaticImp1"},
+				Bid:            &openrtb2.Bid{ID: "pubmaticImp1", MType: openrtb2.MarkupBanner},
 				DealPriority:   4,
-				BidType:        openrtb_ext.BidTypeBanner,
 				OriginalBidCur: "USD",
 				BidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
 			}},
@@ -2521,25 +2522,25 @@ func TestExtraBidWithAlternateBidderCodeDisabled(t *testing.T) {
 			Bids: []*adapters.TypedBid{
 				{
 					Bid: &openrtb2.Bid{
-						ID: "pubmaticImp1",
+						ID:    "pubmaticImp1",
+						MType: openrtb2.MarkupBanner,
 					},
-					BidType:      openrtb_ext.BidTypeBanner,
 					DealPriority: 4,
 					Seat:         "pubmatic",
 				},
 				{
 					Bid: &openrtb2.Bid{
-						ID: "groupmImp1",
+						ID:    "groupmImp1",
+						MType: openrtb2.MarkupVideo,
 					},
-					BidType:      openrtb_ext.BidTypeVideo,
 					DealPriority: 5,
 					Seat:         "groupm-rejected",
 				},
 				{
 					Bid: &openrtb2.Bid{
-						ID: "groupmImp2",
+						ID:    "groupmImp2",
+						MType: openrtb2.MarkupVideo,
 					},
-					BidType:      openrtb_ext.BidTypeVideo,
 					DealPriority: 5,
 					Seat:         "groupm-allowed",
 				},
@@ -2551,9 +2552,8 @@ func TestExtraBidWithAlternateBidderCodeDisabled(t *testing.T) {
 		{
 			HttpCalls: []*openrtb_ext.ExtHttpCall{},
 			Bids: []*entities.PbsOrtbBid{{
-				Bid:            &openrtb2.Bid{ID: "groupmImp2"},
+				Bid:            &openrtb2.Bid{ID: "groupmImp2", MType: openrtb2.MarkupVideo},
 				DealPriority:   5,
-				BidType:        openrtb_ext.BidTypeVideo,
 				OriginalBidCur: "USD",
 				BidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
 			}},
@@ -2563,9 +2563,8 @@ func TestExtraBidWithAlternateBidderCodeDisabled(t *testing.T) {
 		{
 			HttpCalls: []*openrtb_ext.ExtHttpCall{},
 			Bids: []*entities.PbsOrtbBid{{
-				Bid:            &openrtb2.Bid{ID: "pubmaticImp1"},
+				Bid:            &openrtb2.Bid{ID: "pubmaticImp1", MType: openrtb2.MarkupBanner},
 				DealPriority:   4,
-				BidType:        openrtb_ext.BidTypeBanner,
 				OriginalBidCur: "USD",
 				BidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
 			}},
@@ -2632,18 +2631,18 @@ func TestExtraBidWithBidAdjustments(t *testing.T) {
 				{
 					Bid: &openrtb2.Bid{
 						ID:    "pubmaticImp1",
+						MType: openrtb2.MarkupBanner,
 						Price: 3,
 					},
-					BidType:      openrtb_ext.BidTypeBanner,
 					DealPriority: 4,
 					Seat:         "pubmatic",
 				},
 				{
 					Bid: &openrtb2.Bid{
 						ID:    "groupmImp1",
+						MType: openrtb2.MarkupVideo,
 						Price: 7,
 					},
-					BidType:      openrtb_ext.BidTypeVideo,
 					DealPriority: 5,
 					Seat:         "groupm",
 				},
@@ -2657,10 +2656,10 @@ func TestExtraBidWithBidAdjustments(t *testing.T) {
 			Bids: []*entities.PbsOrtbBid{{
 				Bid: &openrtb2.Bid{
 					ID:    "groupmImp1",
+					MType: openrtb2.MarkupVideo,
 					Price: 21,
 				},
 				DealPriority:   5,
-				BidType:        openrtb_ext.BidTypeVideo,
 				OriginalBidCPM: 7,
 				OriginalBidCur: "USD",
 				BidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
@@ -2673,10 +2672,10 @@ func TestExtraBidWithBidAdjustments(t *testing.T) {
 			Bids: []*entities.PbsOrtbBid{{
 				Bid: &openrtb2.Bid{
 					ID:    "pubmaticImp1",
+					MType: openrtb2.MarkupBanner,
 					Price: 6,
 				},
 				DealPriority:   4,
-				BidType:        openrtb_ext.BidTypeBanner,
 				OriginalBidCur: "USD",
 				OriginalBidCPM: 3,
 				BidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
@@ -2745,18 +2744,18 @@ func TestExtraBidWithBidAdjustmentsUsingAdapterCode(t *testing.T) {
 				{
 					Bid: &openrtb2.Bid{
 						ID:    "pubmaticImp1",
+						MType: openrtb2.MarkupBanner,
 						Price: 3,
 					},
-					BidType:      openrtb_ext.BidTypeBanner,
 					DealPriority: 4,
 					Seat:         "pubmatic",
 				},
 				{
 					Bid: &openrtb2.Bid{
 						ID:    "groupmImp1",
+						MType: openrtb2.MarkupVideo,
 						Price: 7,
 					},
-					BidType:      openrtb_ext.BidTypeVideo,
 					DealPriority: 5,
 					Seat:         "groupm",
 				},
@@ -2770,10 +2769,10 @@ func TestExtraBidWithBidAdjustmentsUsingAdapterCode(t *testing.T) {
 			Bids: []*entities.PbsOrtbBid{{
 				Bid: &openrtb2.Bid{
 					ID:    "groupmImp1",
+					MType: openrtb2.MarkupVideo,
 					Price: 14,
 				},
 				DealPriority:   5,
-				BidType:        openrtb_ext.BidTypeVideo,
 				OriginalBidCPM: 7,
 				OriginalBidCur: "USD",
 				BidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
@@ -2786,10 +2785,10 @@ func TestExtraBidWithBidAdjustmentsUsingAdapterCode(t *testing.T) {
 			Bids: []*entities.PbsOrtbBid{{
 				Bid: &openrtb2.Bid{
 					ID:    "pubmaticImp1",
+					MType: openrtb2.MarkupBanner,
 					Price: 6,
 				},
 				DealPriority:   4,
-				BidType:        openrtb_ext.BidTypeBanner,
 				OriginalBidCur: "USD",
 				OriginalBidCPM: 3,
 				BidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
@@ -2857,18 +2856,18 @@ func TestExtraBidWithMultiCurrencies(t *testing.T) {
 				{
 					Bid: &openrtb2.Bid{
 						ID:    "pubmaticImp1",
+						MType: openrtb2.MarkupBanner,
 						Price: 3,
 					},
-					BidType:      openrtb_ext.BidTypeBanner,
 					DealPriority: 4,
 					Seat:         "pubmatic",
 				},
 				{
 					Bid: &openrtb2.Bid{
 						ID:    "groupmImp1",
+						MType: openrtb2.MarkupVideo,
 						Price: 7,
 					},
-					BidType:      openrtb_ext.BidTypeVideo,
 					DealPriority: 5,
 					Seat:         "groupm",
 				},
@@ -2882,10 +2881,10 @@ func TestExtraBidWithMultiCurrencies(t *testing.T) {
 			Bids: []*entities.PbsOrtbBid{{
 				Bid: &openrtb2.Bid{
 					ID:    "groupmImp1",
+					MType: openrtb2.MarkupVideo,
 					Price: 571.5994430039375,
 				},
 				DealPriority:   5,
-				BidType:        openrtb_ext.BidTypeVideo,
 				OriginalBidCPM: 7,
 				OriginalBidCur: "USD",
 				BidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
@@ -2898,10 +2897,10 @@ func TestExtraBidWithMultiCurrencies(t *testing.T) {
 			Bids: []*entities.PbsOrtbBid{{
 				Bid: &openrtb2.Bid{
 					ID:    "pubmaticImp1",
+					MType: openrtb2.MarkupBanner,
 					Price: 244.97118985883034,
 				},
 				DealPriority:   4,
-				BidType:        openrtb_ext.BidTypeBanner,
 				OriginalBidCPM: 3,
 				OriginalBidCur: "USD",
 				BidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},

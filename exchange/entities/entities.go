@@ -28,7 +28,6 @@ type PbsOrtbSeatBid struct {
 //
 // PbsOrtbBid.Bid.Ext will become "response.seatbid[i].Bid.ext.bidder" in the final OpenRTB response.
 // PbsOrtbBid.BidMeta will become "response.seatbid[i].Bid.ext.prebid.meta" in the final OpenRTB response.
-// PbsOrtbBid.BidType will become "response.seatbid[i].Bid.ext.prebid.type" in the final OpenRTB response.
 // PbsOrtbBid.BidTargets does not need to be filled out by the Bidder. It will be set later by the exchange.
 // PbsOrtbBid.BidVideo is optional but should be filled out by the Bidder if BidType is video.
 // PbsOrtbBid.BidEvents is set by exchange when event tracking is enabled
@@ -38,7 +37,6 @@ type PbsOrtbSeatBid struct {
 type PbsOrtbBid struct {
 	Bid               *openrtb2.Bid
 	BidMeta           *openrtb_ext.ExtBidPrebidMeta
-	BidType           openrtb_ext.BidType
 	BidTargets        map[string]string
 	BidVideo          *openrtb_ext.ExtBidPrebidVideo
 	BidEvents         *openrtb_ext.ExtBidPrebidEvents

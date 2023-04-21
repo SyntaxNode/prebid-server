@@ -672,7 +672,7 @@ func (e *exchange) getAllBids(
 					for _, bid := range seatBid.Bids {
 						var cpm = float64(bid.Bid.Price * 1000)
 						e.me.RecordAdapterPrice(bidderRequest.BidderLabels, cpm)
-						e.me.RecordAdapterBidReceived(bidderRequest.BidderLabels, bid.BidType, bid.Bid.AdM != "")
+						e.me.RecordAdapterBidReceived(bidderRequest.BidderLabels, bid.Bid.MType, bid.Bid.AdM != "")
 					}
 				}
 			}
@@ -1159,19 +1159,19 @@ func (e *exchange) makeBid(bids []*entities.PbsOrtbBid, auc *auction, returnCrea
 	errs := make([]error, 0, 1)
 
 	for _, bid := range bids {
-		if e.bidValidationEnforcement.BannerCreativeMaxSize == config.ValidationEnforce && bid.BidType == openrtb_ext.BidTypeBanner {
+		if e.bidValidationEnforcement.BannerCreativeMaxSize == config.ValidationEnforce && bid.Bid.MType == openrtb2.MarkupBanner {
 			if !e.validateBannerCreativeSize(bid, bidResponseExt, adapter, pubID, e.bidValidationEnforcement.BannerCreativeMaxSize) {
 				continue // Don't add bid to result
 			}
-		} else if e.bidValidationEnforcement.BannerCreativeMaxSize == config.ValidationWarn && bid.BidType == openrtb_ext.BidTypeBanner {
+		} else if e.bidValidationEnforcement.BannerCreativeMaxSize == config.ValidationWarn && bid.Bid.MType == openrtb2.MarkupBanner {
 			e.validateBannerCreativeSize(bid, bidResponseExt, adapter, pubID, e.bidValidationEnforcement.BannerCreativeMaxSize)
 		}
 		if _, ok := impExtInfoMap[bid.Bid.ImpID]; ok {
-			if e.bidValidationEnforcement.SecureMarkup == config.ValidationEnforce && (bid.BidType == openrtb_ext.BidTypeBanner || bid.BidType == openrtb_ext.BidTypeVideo) {
+			if e.bidValidationEnforcement.SecureMarkup == config.ValidationEnforce && (bid.Bid.MType == openrtb2.MarkupBanner || bid.Bid.MType == openrtb2.MarkupVideo) {
 				if !e.validateBidAdM(bid, bidResponseExt, adapter, pubID, e.bidValidationEnforcement.SecureMarkup) {
 					continue // Don't add bid to result
 				}
-			} else if e.bidValidationEnforcement.SecureMarkup == config.ValidationWarn && (bid.BidType == openrtb_ext.BidTypeBanner || bid.BidType == openrtb_ext.BidTypeVideo) {
+			} else if e.bidValidationEnforcement.SecureMarkup == config.ValidationWarn && (bid.Bid.MType == openrtb2.MarkupBanner || bid.Bid.MType == openrtb2.MarkupVideo) {
 				e.validateBidAdM(bid, bidResponseExt, adapter, pubID, e.bidValidationEnforcement.SecureMarkup)
 			}
 
