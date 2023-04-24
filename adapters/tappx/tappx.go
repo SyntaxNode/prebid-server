@@ -16,7 +16,6 @@ import (
 	"github.com/prebid/prebid-server/errortypes"
 	"github.com/prebid/prebid-server/macros"
 	"github.com/prebid/prebid-server/openrtb_ext"
-	"github.com/prebid/prebid-server/util/bidutil"
 )
 
 const TAPPX_BIDDER_VERSION = "1.5"
@@ -202,16 +201,16 @@ func (a *TappxAdapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRe
 
 	for _, sb := range bidResp.SeatBid {
 		for i := 0; i < len(sb.Bid); i++ {
-			bid := sb.Bid[i]
+			bid := &sb.Bid[i]
 
-			bidutil.FallbackToMTypeFromImpWithDefault(
-				&bid,
-				internalRequest.Imp,
-				bidutil.MTypePriority{openrtb2.MarkupVideo, openrtb2.MarkupBanner},
-				openrtb2.MarkupBanner)
+			adapters.FallbackToMTypeFromImpWithDefault{
+				Imps:         internalRequest.Imp,
+				TypePriority: []openrtb2.MarkupType{openrtb2.MarkupVideo, openrtb2.MarkupBanner},
+				TypeDefault:  openrtb2.MarkupBanner,
+			}.Apply(bid)
 
 			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-				Bid: &bid,
+				Bid: bid,
 			})
 
 		}

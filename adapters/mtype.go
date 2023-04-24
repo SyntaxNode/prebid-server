@@ -1,22 +1,26 @@
-package bidutil
+package adapters
 
 import (
 	"github.com/prebid/openrtb/v19/openrtb2"
 )
 
-type MTypePriority []openrtb2.MarkupType
+type FallbackToMTypeFromImpWithDefault struct {
+	Imps         []openrtb2.Imp
+	TypePriority []openrtb2.MarkupType
+	TypeDefault  openrtb2.MarkupType
+}
 
-func FallbackToMTypeFromImpWithDefault(bid *openrtb2.Bid, imps []openrtb2.Imp, typePriority MTypePriority, typeDefault openrtb2.MarkupType) {
+func (f FallbackToMTypeFromImpWithDefault) Apply(bid *openrtb2.Bid) {
 	// use mtype from bid, if available
 	if bid.MType != 0 {
 		return
 	}
 
 	// use mtype from impression, if found (should be)
-	for _, imp := range imps {
+	for _, imp := range f.Imps {
 		if imp.ID == bid.ImpID {
 			// check for mtype per given priority
-			for _, p := range typePriority {
+			for _, p := range f.TypePriority {
 				switch p {
 				case openrtb2.MarkupBanner:
 					if imp.Banner != nil {
@@ -44,5 +48,5 @@ func FallbackToMTypeFromImpWithDefault(bid *openrtb2.Bid, imps []openrtb2.Imp, t
 	}
 
 	// fallback to default
-	bid.MType = typeDefault
+	bid.MType = f.TypeDefault
 }
