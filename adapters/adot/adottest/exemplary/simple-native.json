@@ -77,13 +77,13 @@
             "nurl": "nurl.link/win?p=1.16346",
             "w": 300,
             "h": 250,
+            "mtype": 4,
             "ext": {
               "adot": {
                 "media_type": "native"
               }
             }
-          },
-          "type": "native"
+          }
         }
       ]
     }

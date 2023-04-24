@@ -25,15 +25,41 @@ func TestJsonSamples(t *testing.T) {
 	adapterstest.RunJSONBidderTest(t, "adottest", bidder)
 }
 
-func TestMediaTypeError(t *testing.T) {
-	_, err := getMediaTypeForBid(nil)
+func TestFallbackToMTypeFromExt(t *testing.T) {
+	t.Run("nil", func(t *testing.T) {
+		err := fallbackToMTypeFromExt(nil)
+		assert.Error(t, err)
+	})
 
-	assert.Error(t, err)
+	t.Run("invalid", func(t *testing.T) {
+		byteInvalid, _ := json.Marshal(&adotBidExt{Adot: bidExt{"invalid"}})
+		err := fallbackToMTypeFromExt(&openrtb2.Bid{Ext: json.RawMessage(byteInvalid)})
+		assert.Error(t, err)
+	})
 
-	byteInvalid, _ := json.Marshal(&adotBidExt{Adot: bidExt{"invalid"}})
-	_, err = getMediaTypeForBid(&openrtb2.Bid{Ext: json.RawMessage(byteInvalid)})
+	t.Run("banner", func(t *testing.T) {
+		byteBanner, _ := json.Marshal(&adotBidExt{Adot: bidExt{"banner"}})
+		bid := &openrtb2.Bid{Ext: json.RawMessage(byteBanner)}
+		err := fallbackToMTypeFromExt(bid)
+		assert.NoError(t, err)
+		assert.Equal(t, openrtb2.MarkupBanner, bid.MType)
+	})
 
-	assert.Error(t, err)
+	t.Run("video", func(t *testing.T) {
+		byteVideo, _ := json.Marshal(&adotBidExt{Adot: bidExt{"video"}})
+		bid := &openrtb2.Bid{Ext: json.RawMessage(byteVideo)}
+		err := fallbackToMTypeFromExt(bid)
+		assert.NoError(t, err)
+		assert.Equal(t, openrtb2.MarkupVideo, bid.MType)
+	})
+
+	t.Run("native", func(t *testing.T) {
+		byteNative, _ := json.Marshal(&adotBidExt{Adot: bidExt{"native"}})
+		bid := &openrtb2.Bid{Ext: json.RawMessage(byteNative)}
+		err := fallbackToMTypeFromExt(bid)
+		assert.NoError(t, err)
+		assert.Equal(t, openrtb2.MarkupNative, bid.MType)
+	})
 }
 
 func TestBidResponseNoContent(t *testing.T) {
@@ -49,27 +75,6 @@ func TestBidResponseNoContent(t *testing.T) {
 		t.Fatalf("the bid response should be nil since the bidder status is No Content")
 	} else if err != nil {
 		t.Fatalf("the error should be nil since the bidder status is 204 : No Content")
-	}
-}
-
-func TestMediaTypeForBid(t *testing.T) {
-	byteBanner, _ := json.Marshal(&adotBidExt{Adot: bidExt{"banner"}})
-	byteVideo, _ := json.Marshal(&adotBidExt{Adot: bidExt{"video"}})
-	byteNative, _ := json.Marshal(&adotBidExt{Adot: bidExt{"native"}})
-
-	bidTypeBanner, _ := getMediaTypeForBid(&openrtb2.Bid{Ext: json.RawMessage(byteBanner)})
-	if bidTypeBanner != openrtb_ext.BidTypeBanner {
-		t.Errorf("the type is not the valid one. actual: %v, expected: %v", bidTypeBanner, openrtb_ext.BidTypeBanner)
-	}
-
-	bidTypeVideo, _ := getMediaTypeForBid(&openrtb2.Bid{Ext: json.RawMessage(byteVideo)})
-	if bidTypeVideo != openrtb_ext.BidTypeVideo {
-		t.Errorf("the type is not the valid one. actual: %v, expected: %v", bidTypeVideo, openrtb_ext.BidTypeVideo)
-	}
-
-	bidTypeNative, _ := getMediaTypeForBid(&openrtb2.Bid{Ext: json.RawMessage(byteNative)})
-	if bidTypeNative != openrtb_ext.BidTypeNative {
-		t.Errorf("the type is not the valid one. actual: %v, expected: %v", bidTypeNative, openrtb_ext.BidTypeVideo)
 	}
 }
 

@@ -88,13 +88,13 @@
                 "nurl": "nurl.link/win?p=1.16346",
                 "w": 320,
                 "h": 480,
+                "mtype": 1,
                 "ext": {
                     "adot": {
                         "media_type": "banner"
                     }
                 }
-            },
-            "type": "banner"
+            }
         }
       ]
     }

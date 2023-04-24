@@ -89,13 +89,13 @@
             "adm": "some-test-ad",
             "w": 300,
             "h": 600,
+            "mtype": 1,
             "ext": {
               "adot": {
                 "media_type": "banner"
               }
             }
-          },
-          "type": "banner"
+          }
         }
       ]
     }

@@ -95,11 +95,11 @@ func (a *adapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest
 
 	for _, sb := range bidResp.SeatBid {
 		for i := range sb.Bid {
-			if bidType, err := getMediaTypeForBid(&sb.Bid[i]); err == nil {
+			err := fallbackToMTypeFromExt(&sb.Bid[i])
+			if err == nil {
 				resolveMacros(&sb.Bid[i])
 				bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-					Bid:     &sb.Bid[i],
-					BidType: bidType,
+					Bid: &sb.Bid[i],
 				})
 			}
 		}
@@ -108,25 +108,33 @@ func (a *adapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest
 	return bidResponse, nil
 }
 
-// getMediaTypeForBid determines which type of bid.
-func getMediaTypeForBid(bid *openrtb2.Bid) (openrtb_ext.BidType, error) {
+func fallbackToMTypeFromExt(bid *openrtb2.Bid) error {
 	if bid == nil {
-		return "", fmt.Errorf("the bid request object is nil")
+		return fmt.Errorf("the bid request object is nil")
 	}
 
+	// use mtype from bid, if available
+	if bid.MType != 0 {
+		return nil
+	}
+
+	// use mtype mapped from ext
 	var impExt adotBidExt
 	if err := json.Unmarshal(bid.Ext, &impExt); err == nil {
 		switch impExt.Adot.MediaType {
-		case string(openrtb_ext.BidTypeBanner):
-			return openrtb_ext.BidTypeBanner, nil
-		case string(openrtb_ext.BidTypeVideo):
-			return openrtb_ext.BidTypeVideo, nil
-		case string(openrtb_ext.BidTypeNative):
-			return openrtb_ext.BidTypeNative, nil
+		case "banner":
+			bid.MType = openrtb2.MarkupBanner
+			return nil
+		case "video":
+			bid.MType = openrtb2.MarkupVideo
+			return nil
+		case "native":
+			bid.MType = openrtb2.MarkupNative
+			return nil
 		}
 	}
 
-	return "", fmt.Errorf("unrecognized bid type in response from adot")
+	return fmt.Errorf("unrecognized bid type in response from adot")
 }
 
 // resolveMacros resolves OpenRTB macros in nurl and adm
