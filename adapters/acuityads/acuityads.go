@@ -170,14 +170,16 @@ func (a *AcuityAdsAdapter) MakeBids(
 	sb := bidResp.SeatBid[0]
 
 	for i := range sb.Bid {
+		bid := &sb.Bid[i]
+
 		adapters.FallbackToMTypeFromImpWithDefault{
 			Imps:         openRTBRequest.Imp,
 			TypePriority: []openrtb2.MarkupType{openrtb2.MarkupVideo, openrtb2.MarkupNative, openrtb2.MarkupBanner},
 			TypeDefault:  openrtb2.MarkupBanner,
-		}.Apply(&sb.Bid[i])
+		}.Apply(bid)
 
 		bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-			Bid: &sb.Bid[i],
+			Bid: bid,
 		})
 	}
 	return bidResponse, nil

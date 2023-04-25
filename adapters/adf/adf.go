@@ -127,7 +127,7 @@ func (a *adapter) MakeBids(request *openrtb2.BidRequest, requestData *adapters.R
 		for i := range seatBid.Bid {
 			bid := &seatBid.Bid[i]
 
-			err := fallbackToMTypeFromPrebidExt(bid)
+			err := adapters.FallbackToMTypeFromPrebidExt{}.Apply(bid)
 			if err != nil {
 				errors = append(errors, err)
 				continue
@@ -140,29 +140,4 @@ func (a *adapter) MakeBids(request *openrtb2.BidRequest, requestData *adapters.R
 	}
 
 	return bidResponse, errors
-}
-
-func fallbackToMTypeFromPrebidExt(bid *openrtb2.Bid) error {
-	// use mtype from bid, if available
-	if bid.MType != 0 {
-		return nil
-	}
-
-	// use ext.prebid.type, if available
-	if bid.Ext != nil {
-		var bidExt openrtb_ext.ExtBid
-		err := json.Unmarshal(bid.Ext, &bidExt)
-		if err == nil && bidExt.Prebid != nil {
-			if mType, err := adapters.MTypeFromBidType(bidExt.Prebid.Type); err == nil {
-				bid.MType = mType
-				return nil
-			} else {
-				return err
-			}
-		}
-	}
-
-	return &errortypes.BadServerResponse{
-		Message: fmt.Sprintf("Failed to parse impression \"%s\" mediatype", bid.ImpID),
-	}
 }

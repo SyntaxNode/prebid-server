@@ -179,7 +179,7 @@ func (a *adapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest
 	bidderResponse := adapters.NewBidderResponseWithBidsCapacity(5)
 	for _, sb := range appnexusResponse.SeatBid {
 		for i := range sb.Bid {
-			bid := sb.Bid[i]
+			bid := &sb.Bid[i]
 
 			var bidExt appnexusBidExt
 			if err := json.Unmarshal(bid.Ext, &bidExt); err != nil {
@@ -187,7 +187,7 @@ func (a *adapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest
 				continue
 			}
 
-			if err := fallbackToMTypeFromExt(&bid, &bidExt); err != nil {
+			if err := fallbackToMTypeFromExt(bid, &bidExt); err != nil {
 				errs = append(errs, err)
 				continue
 			}
@@ -201,7 +201,7 @@ func (a *adapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest
 			}
 
 			bidderResponse.Bids = append(bidderResponse.Bids, &adapters.TypedBid{
-				Bid:          &bid,
+				Bid:          bid,
 				BidVideo:     &openrtb_ext.ExtBidPrebidVideo{Duration: bidExt.Appnexus.CreativeInfo.Video.Duration},
 				DealPriority: bidExt.Appnexus.DealPriority,
 			})

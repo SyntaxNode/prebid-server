@@ -82,11 +82,11 @@
   "expectedBidResponses": [],
   "expectedMakeBidsErrors": [ 
     {
-      "value": "Failed to parse impression \"test-imp-id\" mediatype",
+      "value": "missing ext.prebid.type in bid for impression: test-imp-id",
       "comparison": "literal" 
     },
     {
-      "value": "invalid BidType: not-a-banner",
+      "value": "invalid ext.prebid.type 'not-a-banner' in bid for impression: test-imp-id-2",
       "comparison": "literal" 
     }
   ]

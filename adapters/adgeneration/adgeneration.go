@@ -25,19 +25,19 @@ type AdgenerationAdapter struct {
 
 // Server Responses
 type adgServerResponse struct {
-	Locationid string        `json:"locationid"`
-	Dealid     string        `json:"dealid"`
+	LocationID string        `json:"locationid"`
+	DealID     string        `json:"dealid"`
 	Ad         string        `json:"ad"`
 	Beacon     string        `json:"beacon"`
-	Beaconurl  string        `json:"beaconurl"`
+	BeaconUrl  string        `json:"beaconurl"`
 	Cpm        float64       `jsons:"cpm"`
-	Creativeid string        `json:"creativeid"`
+	CreativeID string        `json:"creativeid"`
 	H          uint64        `json:"h"`
 	W          uint64        `json:"w"`
 	Ttl        uint64        `json:"ttl"`
-	Vastxml    string        `json:"vastxml,omitempty"`
+	VastXml    string        `json:"vastxml,omitempty"`
 	LandingUrl string        `json:"landing_url"`
-	Scheduleid string        `json:"scheduleid"`
+	ScheduleID string        `json:"scheduleid"`
 	Results    []interface{} `json:"results"`
 }
 
@@ -221,18 +221,18 @@ func (adg *AdgenerationAdapter) MakeBids(internalRequest *openrtb2.BidRequest, e
 			},
 			}
 		}
-		if adgExt.Id == bidResp.Locationid {
+		if adgExt.Id == bidResp.LocationID {
 			impId = v.ID
 			adm = createAd(&bidResp, impId)
 			bid := openrtb2.Bid{
-				ID:     bidResp.Locationid,
+				ID:     bidResp.LocationID,
 				ImpID:  impId,
 				AdM:    adm,
 				Price:  bidResp.Cpm,
 				W:      int64(bidResp.W),
 				H:      int64(bidResp.H),
-				CrID:   bidResp.Creativeid,
-				DealID: bidResp.Dealid,
+				CrID:   bidResp.CreativeID,
+				DealID: bidResp.DealID,
 				MType:  openrtb2.MarkupBanner,
 			}
 
@@ -248,8 +248,8 @@ func (adg *AdgenerationAdapter) MakeBids(internalRequest *openrtb2.BidRequest, e
 
 func createAd(body *adgServerResponse, impId string) string {
 	ad := body.Ad
-	if body.Vastxml != "" {
-		ad = "<body><div id=\"apvad-" + impId + "\"></div><script type=\"text/javascript\" id=\"apv\" src=\"https://cdn.apvdr.com/js/VideoAd.min.js\"></script>" + insertVASTMethod(impId, body.Vastxml) + "</body>"
+	if body.VastXml != "" {
+		ad = "<body><div id=\"apvad-" + impId + "\"></div><script type=\"text/javascript\" id=\"apv\" src=\"https://cdn.apvdr.com/js/VideoAd.min.js\"></script>" + insertVASTMethod(impId, body.VastXml) + "</body>"
 	}
 	ad = appendChildToBody(ad, body.Beacon)
 	unwrappedAd := removeWrapper(ad)

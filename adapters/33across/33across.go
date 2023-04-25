@@ -222,9 +222,10 @@ func (a *TtxAdapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequ
 
 	for _, sb := range bidResp.SeatBid {
 		for i := range sb.Bid {
-			fallbackToMTypeFromExt(&sb.Bid[i])
+			bid := &sb.Bid[i]
+			fallbackToMTypeFromExt(bid)
 			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-				Bid: &sb.Bid[i],
+				Bid: bid,
 			})
 		}
 	}

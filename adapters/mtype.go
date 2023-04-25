@@ -1,9 +1,11 @@
 package adapters
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/prebid/openrtb/v19/openrtb2"
+	"github.com/prebid/prebid-server/errortypes"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
@@ -54,6 +56,35 @@ func (f FallbackToMTypeFromImpWithDefault) Apply(bid *openrtb2.Bid) {
 	bid.MType = f.TypeDefault
 }
 
+type FallbackToMTypeFromPrebidExt struct {
+}
+
+func (f FallbackToMTypeFromPrebidExt) Apply(bid *openrtb2.Bid) error {
+	// use mtype from bid, if available
+	if bid.MType != 0 {
+		return nil
+	}
+
+	// use mtype from ext.prebid.type, if available
+	var bidExt openrtb_ext.ExtBid
+	if err := json.Unmarshal(bid.Ext, &bidExt); err != nil || bidExt.Prebid == nil {
+		return &errortypes.BadServerResponse{
+			Message: fmt.Sprintf("missing ext.prebid.type in bid for impression: %s", bid.ImpID),
+		}
+	}
+
+	mType, err := MTypeFromBidType(bidExt.Prebid.Type)
+	if err != nil {
+		return &errortypes.BadServerResponse{
+			Message: fmt.Sprintf("invalid ext.prebid.type '%s' in bid for impression: %s", bidExt.Prebid.Type, bid.ImpID),
+		}
+	}
+
+	bid.MType = mType
+	return nil
+}
+
+// var bidExt openrtb_ext.ExtBid
 func MTypeFromBidType(p openrtb_ext.BidType) (openrtb2.MarkupType, error) {
 	switch p {
 	case openrtb_ext.BidTypeBanner:

@@ -165,14 +165,14 @@ func TestCreateAd(t *testing.T) {
 	adgBannerResponse := adgServerResponse{
 		Ad:         "<!DOCTYPE html>\n<head>\n<meta charset=\"UTF-8\">\n<script src=\"test.com\"></script>\n<body>\n<div id=\"medibasspContainer\">\n<iframe src=\"https://dummy-iframe.com></iframe>\n</div>\n</body>\n",
 		Beacon:     "<img src=\"https://dummy-beacon.com\">",
-		Beaconurl:  "https://dummy-beacon.com",
+		BeaconUrl:  "https://dummy-beacon.com",
 		Cpm:        50,
-		Creativeid: "DummyDsp_SdkTeam_supership.jp",
+		CreativeID: "DummyDsp_SdkTeam_supership.jp",
 		H:          300,
 		W:          250,
 		Ttl:        10,
 		LandingUrl: "",
-		Scheduleid: "111111",
+		ScheduleID: "111111",
 	}
 	matchBannerTag := "<div id=\"medibasspContainer\">\n<iframe src=\"https://dummy-iframe.com></iframe>\n</div>\n<img src=\"https://dummy-beacon.com\">"
 
@@ -180,15 +180,15 @@ func TestCreateAd(t *testing.T) {
 	adgVastResponse := adgServerResponse{
 		Ad:         "<!DOCTYPE html>\n<head>\n<meta charset=\"UTF-8\">\n<script src=\"test.com\"></script>\n<body>\n<div id=\"medibasspContainer\">\n<iframe src=\"https://dummy-iframe.com></iframe>\n</div>\n</body>\n",
 		Beacon:     "<img src=\"https://dummy-beacon.com\">",
-		Beaconurl:  "https://dummy-beacon.com",
+		BeaconUrl:  "https://dummy-beacon.com",
 		Cpm:        50,
-		Creativeid: "DummyDsp_SdkTeam_supership.jp",
+		CreativeID: "DummyDsp_SdkTeam_supership.jp",
 		H:          300,
 		W:          250,
 		Ttl:        10,
 		LandingUrl: "",
-		Vastxml:    "<?xml version=\"1.0\"><VAST version=\"3.0\"</VAST>",
-		Scheduleid: "111111",
+		VastXml:    "<?xml version=\"1.0\"><VAST version=\"3.0\"</VAST>",
+		ScheduleID: "111111",
 	}
 	matchVastTag := "<div id=\"apvad-test-vast-imp\"></div><script type=\"text/javascript\" id=\"apv\" src=\"https://cdn.apvdr.com/js/VideoAd.min.js\"></script><script type=\"text/javascript\"> (function(){ new APV.VideoAd({s:\"test-vast-imp\"}).load('<?xml version=\"1.0\"><VAST version=\"3.0\"</VAST>'); })(); </script><img src=\"https://dummy-beacon.com\">"
 

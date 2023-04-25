@@ -67,17 +67,14 @@ func (a *adapter) MakeBids(request *openrtb2.BidRequest, requestData *adapters.R
 
 	for _, seatBid := range response.SeatBid {
 		for i := range seatBid.Bid {
-			var bidExt openrtb_ext.ExtBid
-			if err := json.Unmarshal(seatBid.Bid[i].Ext, &bidExt); err != nil {
-				return nil, []error{&errortypes.BadServerResponse{
-					Message: fmt.Sprintf("Missing ext.prebid.type in bid for impression : %s.", seatBid.Bid[i].ImpID),
-				}}
+			bid := &seatBid.Bid[i]
+
+			err := adapters.FallbackToMTypeFromPrebidExt{}.Apply(bid)
+			if err != nil {
+				return nil, []error{err}
 			}
 
-			b := &adapters.TypedBid{
-				Bid:     &seatBid.Bid[i],
-				BidType: bidExt.Prebid.Type,
-			}
+			b := &adapters.TypedBid{Bid: bid}
 			bidResponse.Bids = append(bidResponse.Bids, b)
 		}
 	}

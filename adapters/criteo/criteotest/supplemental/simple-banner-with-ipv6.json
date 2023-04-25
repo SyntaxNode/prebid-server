@@ -129,13 +129,13 @@
             "adm": "<iframe id='789abc' name='789abc' src='http://creative-url.criteo.com'></iframe>",
             "w": 300,
             "h": 250,
+            "mtype": 1,
             "ext": {
               "prebid": {
                 "type": "banner"
               }
             }
-          },
-          "type": "banner"
+          }
         }
       ]
     }

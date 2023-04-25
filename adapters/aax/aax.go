@@ -70,11 +70,13 @@ func (a *adapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest
 
 	for _, seatBid := range bidResp.SeatBid {
 		for i := range seatBid.Bid {
-			if err := fallbackToMTypeFromExt(&seatBid.Bid[i], internalRequest.Imp); err != nil {
+			bid := &seatBid.Bid[i]
+
+			if err := fallbackToMTypeFromExt(bid, internalRequest.Imp); err != nil {
 				errs = append(errs, err)
 			} else {
 				b := &adapters.TypedBid{
-					Bid: &seatBid.Bid[i],
+					Bid: bid,
 				}
 				bidResponse.Bids = append(bidResponse.Bids, b)
 			}

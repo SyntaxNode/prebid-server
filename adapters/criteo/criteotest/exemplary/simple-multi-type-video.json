@@ -148,13 +148,13 @@
             "adm": "some-test-ad-vast",
             "h": 250,
             "w": 300,
+            "mtype": 2,
             "ext": {
               "prebid": {
                 "type": "video"
               }
             }
-          },
-          "type": "video"
+          }
         }
       ]
     }
