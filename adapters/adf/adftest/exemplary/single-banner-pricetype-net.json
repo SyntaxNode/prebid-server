@@ -99,13 +99,13 @@
           "adm": "{banner html}",
           "crid": "test-creative-id",
           "adomain": [ "test.com" ],
+          "mtype": 1,
           "ext": {
             "prebid": {
               "type": "banner"
             }
           }
-        },
-        "type": "banner"
+        }
       }
     ]
   }]

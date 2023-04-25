@@ -101,13 +101,13 @@
         "price": 10,
         "adm": "{json response string 1}",
         "crid": "test-creative-id-1",
+        "mtype": 4,
         "ext": {
           "prebid": {
             "type": "native"
           }
         }
-      },
-      "type": "native"
+      }
     }, {
       "bid": {
         "id": "test-bid-id-2",
@@ -116,13 +116,13 @@
         "adm": "{json response string 2}",
         "adomain": [ "ad-domain" ],
         "crid": "test-creative-id-2",
+        "mtype": 4,
         "ext": {
           "prebid": {
             "type": "native"
           }
         }
-      },
-      "type": "native"
+      }
     }]
   }]
 }

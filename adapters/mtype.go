@@ -1,7 +1,10 @@
 package adapters
 
 import (
+	"fmt"
+
 	"github.com/prebid/openrtb/v19/openrtb2"
+	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
 type FallbackToMTypeFromImpWithDefault struct {
@@ -49,4 +52,19 @@ func (f FallbackToMTypeFromImpWithDefault) Apply(bid *openrtb2.Bid) {
 
 	// fallback to default
 	bid.MType = f.TypeDefault
+}
+
+func MTypeFromBidType(p openrtb_ext.BidType) (openrtb2.MarkupType, error) {
+	switch p {
+	case openrtb_ext.BidTypeBanner:
+		return openrtb2.MarkupBanner, nil
+	case openrtb_ext.BidTypeVideo:
+		return openrtb2.MarkupVideo, nil
+	case openrtb_ext.BidTypeAudio:
+		return openrtb2.MarkupAudio, nil
+	case openrtb_ext.BidTypeNative:
+		return openrtb2.MarkupNative, nil
+	}
+
+	return 0, fmt.Errorf("invalid BidType: %s", p)
 }

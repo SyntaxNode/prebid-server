@@ -124,15 +124,17 @@ func (a *adapter) MakeBids(request *openrtb2.BidRequest, requestData *adapters.R
 	bidResponse.Currency = response.Cur
 	var errors []error
 	for _, seatBid := range response.SeatBid {
-		for i, bid := range seatBid.Bid {
-			bidType, err := getMediaTypeForBid(bid)
+		for i := range seatBid.Bid {
+			bid := &seatBid.Bid[i]
+
+			err := fallbackToMTypeFromPrebidExt(bid)
 			if err != nil {
 				errors = append(errors, err)
 				continue
 			}
+
 			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-				Bid:     &seatBid.Bid[i],
-				BidType: bidType,
+				Bid: bid,
 			})
 		}
 	}
@@ -140,16 +142,27 @@ func (a *adapter) MakeBids(request *openrtb2.BidRequest, requestData *adapters.R
 	return bidResponse, errors
 }
 
-func getMediaTypeForBid(bid openrtb2.Bid) (openrtb_ext.BidType, error) {
+func fallbackToMTypeFromPrebidExt(bid *openrtb2.Bid) error {
+	// use mtype from bid, if available
+	if bid.MType != 0 {
+		return nil
+	}
+
+	// use ext.prebid.type, if available
 	if bid.Ext != nil {
 		var bidExt openrtb_ext.ExtBid
 		err := json.Unmarshal(bid.Ext, &bidExt)
 		if err == nil && bidExt.Prebid != nil {
-			return openrtb_ext.ParseBidType(string(bidExt.Prebid.Type))
+			if mType, err := adapters.MTypeFromBidType(bidExt.Prebid.Type); err == nil {
+				bid.MType = mType
+				return nil
+			} else {
+				return err
+			}
 		}
 	}
 
-	return "", &errortypes.BadServerResponse{
+	return &errortypes.BadServerResponse{
 		Message: fmt.Sprintf("Failed to parse impression \"%s\" mediatype", bid.ImpID),
 	}
 }

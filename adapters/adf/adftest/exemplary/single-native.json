@@ -87,13 +87,13 @@
           "price": 10,
           "adm": "{json response string}",
           "crid": "test-creative-id",
+          "mtype": 4,
           "ext": {
             "prebid": {
               "type": "native"
             }
           }
-        },
-        "type": "native"
+        }
       }
     ]
   }]

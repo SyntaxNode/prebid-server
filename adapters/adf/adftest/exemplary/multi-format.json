@@ -135,13 +135,13 @@
         "price": 10,
         "adm": "{video xml}",
         "crid": "test-creative-id-1",
+        "mtype": 2,
         "ext": {
           "prebid": {
             "type": "video"
           }
         }
-      },
-      "type": "video"
+      }
     }, {
       "bid": {
         "id": "test-bid-id-2",
@@ -150,13 +150,13 @@
         "adm": "{banner html}",
         "adomain": [ "ad-domain" ],
         "crid": "test-creative-id-2",
+        "mtype": 1,
         "ext": {
           "prebid": {
             "type": "banner"
           }
         }
-      },
-      "type": "banner"
+      }
     }]
   }]
 }
