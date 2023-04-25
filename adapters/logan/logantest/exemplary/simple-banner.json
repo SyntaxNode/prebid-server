@@ -113,9 +113,9 @@
                         "crid": "test_crid",
                         "dealid": "test_dealid",
                         "w": 300,
-                        "h": 250
-                    },
-                    "type": "banner"
+                        "h": 250,
+                        "mtype": 1
+                    }
                 }
             ]
         }

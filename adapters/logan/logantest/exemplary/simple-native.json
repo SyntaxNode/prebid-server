@@ -97,9 +97,9 @@
                         "crid": "test_crid",
                         "dealid": "test_dealid",
                         "w": 300,
-                        "h": 250
-                    },
-                    "type": "native"
+                        "h": 250,
+                        "mtype": 4
+                    }
                 }
             ]
         }
