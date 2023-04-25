@@ -108,9 +108,14 @@ func (adapter *adponeAdapter) MakeBids(
 	bidderResponse = adapters.NewBidderResponseWithBidsCapacity(bidsCapacity)
 	var typedBid *adapters.TypedBid
 	for _, seatBid := range openRTBBidderResponse.SeatBid {
-		for _, bid := range seatBid.Bid {
-			bid := bid
-			typedBid = &adapters.TypedBid{Bid: &bid, BidType: "banner"}
+		for i := range seatBid.Bid {
+			bid := &seatBid.Bid[i]
+
+			if bid.MType == 0 {
+				bid.MType = openrtb2.MarkupBanner
+			}
+
+			typedBid = &adapters.TypedBid{Bid: bid}
 			bidderResponse.Bids = append(bidderResponse.Bids, typedBid)
 		}
 	}
