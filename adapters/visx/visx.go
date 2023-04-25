@@ -114,26 +114,29 @@ func (a *VisxAdapter) MakeBids(internalRequest *openrtb2.BidRequest, externalReq
 
 	for _, sb := range bidResp.SeatBid {
 		for i := range sb.Bid {
-			bid := openrtb2.Bid{}
-			bid.ID = internalRequest.ID
-			bid.CrID = sb.Bid[i].CrID
-			bid.ImpID = sb.Bid[i].ImpID
-			bid.Price = sb.Bid[i].Price
-			bid.AdM = sb.Bid[i].AdM
-			bid.W = int64(sb.Bid[i].W)
-			bid.H = int64(sb.Bid[i].H)
-			bid.ADomain = sb.Bid[i].ADomain
-			bid.DealID = sb.Bid[i].DealID
-			bid.Ext = sb.Bid[i].Ext
+			visxBid := sb.Bid[i]
 
-			bidType, err := getMediaTypeForImp(sb.Bid[i].ImpID, internalRequest.Imp, sb.Bid[i])
+			mType, err := getMediaTypeForImp(sb.Bid[i].ImpID, internalRequest.Imp, sb.Bid[i])
 			if err != nil {
 				return nil, []error{err}
 			}
 
+			bid := openrtb2.Bid{
+				ID:      internalRequest.ID,
+				CrID:    visxBid.CrID,
+				ImpID:   visxBid.ImpID,
+				Price:   visxBid.Price,
+				AdM:     visxBid.AdM,
+				W:       int64(visxBid.W),
+				H:       int64(visxBid.H),
+				ADomain: visxBid.ADomain,
+				DealID:  visxBid.DealID,
+				MType:   mType,
+				Ext:     visxBid.Ext,
+			}
+
 			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-				Bid:     &bid,
-				BidType: bidType,
+				Bid: &bid,
 			})
 		}
 	}
@@ -141,35 +144,35 @@ func (a *VisxAdapter) MakeBids(internalRequest *openrtb2.BidRequest, externalReq
 
 }
 
-func getMediaTypeForImp(impID string, imps []openrtb2.Imp, bid visxBid) (openrtb_ext.BidType, error) {
+func getMediaTypeForImp(impID string, imps []openrtb2.Imp, bid visxBid) (openrtb2.MarkupType, error) {
 	for _, imp := range imps {
 		if imp.ID == impID {
 			var ext visxBidExt
 			if err := json.Unmarshal(bid.Ext, &ext); err == nil {
 				if ext.Prebid.Meta.MediaType == openrtb_ext.BidTypeBanner {
-					return openrtb_ext.BidTypeBanner, nil
+					return openrtb2.MarkupBanner, nil
 				}
 				if ext.Prebid.Meta.MediaType == openrtb_ext.BidTypeVideo {
-					return openrtb_ext.BidTypeVideo, nil
+					return openrtb2.MarkupVideo, nil
 				}
 			}
 
 			if imp.Banner != nil {
-				return openrtb_ext.BidTypeBanner, nil
+				return openrtb2.MarkupBanner, nil
 			}
 
 			if imp.Video != nil {
-				return openrtb_ext.BidTypeVideo, nil
+				return openrtb2.MarkupVideo, nil
 			}
 
-			return "", &errortypes.BadServerResponse{
+			return 0, &errortypes.BadServerResponse{
 				Message: fmt.Sprintf("Unknown impression type for ID: \"%s\"", impID),
 			}
 		}
 	}
 
 	// This shouldnt happen. Lets handle it just incase by returning an error.
-	return "", &errortypes.BadServerResponse{
+	return 0, &errortypes.BadServerResponse{
 		Message: fmt.Sprintf("Failed to find impression for ID: \"%s\"", impID),
 	}
 }

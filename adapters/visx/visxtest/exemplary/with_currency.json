@@ -86,9 +86,9 @@
                     "goodadvertiser.com"
                 ],
                 "crid": "2_261",
-                "w": 300
-            },
-            "type": "banner"
+                "w": 300,
+                "mtype": 1
+            }
         }]
     }]
 }

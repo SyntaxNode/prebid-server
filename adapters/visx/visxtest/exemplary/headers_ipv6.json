@@ -169,9 +169,9 @@
                 ],
                 "dealid": "test_deal_id",
                 "crid": "2_260",
-                "w": 300
-            },
-            "type": "banner"
+                "w": 300,
+                "mtype": 1
+            }
         }]
     }]
 }

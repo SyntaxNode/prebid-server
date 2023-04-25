@@ -185,6 +185,7 @@
                 "dealid": "test_deal_id",
                 "crid": "2_260",
                 "w": 300,
+                "mtype": 2,
                 "ext": {
                     "prebid": {
                         "meta": {
@@ -192,8 +193,7 @@
                         }
                     }
                 }
-            },
-            "type": "video"
+            }
         }]
     }]
 }
