@@ -65,12 +65,13 @@ func (a *adapter) MakeBids(request *openrtb2.BidRequest, requestData *adapters.R
 	bidResponse := adapters.NewBidderResponse()
 	bidResponse.Currency = response.Cur
 
+	mtypeFallback := adapters.FallbackToMTypeFromPrebidExt{}
+
 	for _, seatBid := range response.SeatBid {
 		for i := range seatBid.Bid {
 			bid := &seatBid.Bid[i]
 
-			err := adapters.FallbackToMTypeFromPrebidExt{}.Apply(bid)
-			if err != nil {
+			if err := mtypeFallback.Apply(bid); err != nil {
 				return nil, []error{err}
 			}
 

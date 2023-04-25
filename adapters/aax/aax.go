@@ -75,9 +75,7 @@ func (a *adapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest
 			if err := fallbackToMTypeFromExt(bid, internalRequest.Imp); err != nil {
 				errs = append(errs, err)
 			} else {
-				b := &adapters.TypedBid{
-					Bid: bid,
-				}
+				b := &adapters.TypedBid{Bid: bid}
 				bidResponse.Bids = append(bidResponse.Bids, b)
 			}
 		}

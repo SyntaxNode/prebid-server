@@ -165,18 +165,16 @@ func (a *adapter) MakeBids(
 	bidResponse := adapters.NewBidderResponseWithBidsCapacity(len(bidResp.SeatBid[0].Bid))
 	sb := bidResp.SeatBid[0]
 
+	mtypeFallback := adapters.FallbackToMTypeFromImpWithDefault{
+		Imps:         openRTBRequest.Imp,
+		TypePriority: []openrtb2.MarkupType{openrtb2.MarkupVideo, openrtb2.MarkupNative, openrtb2.MarkupBanner},
+		TypeDefault:  openrtb2.MarkupBanner,
+	}
+
 	for i := range sb.Bid {
 		bid := &sb.Bid[i]
-
-		adapters.FallbackToMTypeFromImpWithDefault{
-			Imps:         openRTBRequest.Imp,
-			TypePriority: []openrtb2.MarkupType{openrtb2.MarkupVideo, openrtb2.MarkupNative, openrtb2.MarkupBanner},
-			TypeDefault:  openrtb2.MarkupBanner,
-		}.Apply(bid)
-
-		bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-			Bid: bid,
-		})
+		mtypeFallback.Apply(bid)
+		bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{Bid: bid})
 	}
 	return bidResponse, nil
 }

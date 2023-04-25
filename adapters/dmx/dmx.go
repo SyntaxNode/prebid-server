@@ -241,21 +241,21 @@ func (adapter *DmxAdapter) MakeBids(request *openrtb2.BidRequest, externalReques
 
 	bidResponse := adapters.NewBidderResponseWithBidsCapacity(5)
 
+	mtypeFallback := adapters.FallbackToMTypeFromImpWithError{
+		Imps:         request.Imp,
+		TypePriority: []openrtb2.MarkupType{openrtb2.MarkupBanner, openrtb2.MarkupVideo},
+	}
+
 	for _, sb := range bidResp.SeatBid {
 		for i := range sb.Bid {
 			bid := &sb.Bid[i]
 
-			err := adapters.FallbackToMTypeFromImpWithError{
-				Imps:         request.Imp,
-				TypePriority: []openrtb2.MarkupType{openrtb2.MarkupBanner, openrtb2.MarkupVideo},
-			}.Apply(bid)
+			err := mtypeFallback.Apply(bid)
 
 			if err != nil {
 				errs = append(errs, err)
 			} else {
-				b := &adapters.TypedBid{
-					Bid: bid,
-				}
+				b := &adapters.TypedBid{Bid: bid}
 				if bid.MType == openrtb2.MarkupVideo {
 					b.Bid.AdM = videoImpInsertion(b.Bid)
 				}

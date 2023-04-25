@@ -135,13 +135,10 @@ func (a *VisxAdapter) MakeBids(internalRequest *openrtb2.BidRequest, externalReq
 				Ext:     visxBid.Ext,
 			}
 
-			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-				Bid: &bid,
-			})
+			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{Bid: &bid})
 		}
 	}
 	return bidResponse, nil
-
 }
 
 func getMediaTypeForImp(impID string, imps []openrtb2.Imp, bid visxBid) (openrtb2.MarkupType, error) {

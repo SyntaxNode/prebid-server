@@ -193,10 +193,7 @@ func (a *AdheseAdapter) MakeBids(internalRequest *openrtb2.BidRequest, externalR
 				bid.MType = getMType(bid.AdM)
 			}
 
-			bidderResponse.Bids = append(bidderResponse.Bids, &adapters.TypedBid{
-				Bid: bid,
-			})
-
+			bidderResponse.Bids = append(bidderResponse.Bids, &adapters.TypedBid{Bid: bid})
 		}
 	}
 	return bidderResponse, errs

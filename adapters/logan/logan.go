@@ -109,16 +109,16 @@ func (a *adapter) MakeBids(request *openrtb2.BidRequest, requestData *adapters.R
 	bidResponse := adapters.NewBidderResponseWithBidsCapacity(len(request.Imp))
 	bidResponse.Currency = response.Cur
 
+	mtypeFallback := adapters.FallbackToMTypeFromImpWithError{
+		Imps:         request.Imp,
+		TypePriority: []openrtb2.MarkupType{openrtb2.MarkupBanner, openrtb2.MarkupVideo, openrtb2.MarkupNative},
+	}
+
 	for _, seatBid := range response.SeatBid {
 		for i := range seatBid.Bid {
 			bid := &seatBid.Bid[i]
 
-			err := adapters.FallbackToMTypeFromImpWithError{
-				Imps:         request.Imp,
-				TypePriority: []openrtb2.MarkupType{openrtb2.MarkupBanner, openrtb2.MarkupVideo, openrtb2.MarkupNative},
-			}.Apply(bid)
-
-			if err != nil {
+			if err := mtypeFallback.Apply(bid); err != nil {
 				return nil, []error{err}
 			}
 

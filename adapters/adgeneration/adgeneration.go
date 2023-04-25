@@ -218,8 +218,7 @@ func (adg *AdgenerationAdapter) MakeBids(internalRequest *openrtb2.BidRequest, e
 		if err != nil {
 			return nil, []error{&errortypes.BadServerResponse{
 				Message: err.Error(),
-			},
-			}
+			}}
 		}
 		if adgExt.Id == bidResp.LocationID {
 			impId = v.ID
@@ -236,9 +235,7 @@ func (adg *AdgenerationAdapter) MakeBids(internalRequest *openrtb2.BidRequest, e
 				MType:  openrtb2.MarkupBanner,
 			}
 
-			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-				Bid: &bid,
-			})
+			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{Bid: &bid})
 			bidResponse.Currency = adg.getCurrency(internalRequest)
 			return bidResponse, nil
 		}

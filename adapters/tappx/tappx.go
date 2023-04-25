@@ -199,20 +199,17 @@ func (a *TappxAdapter) MakeBids(internalRequest *openrtb2.BidRequest, externalRe
 
 	bidResponse := adapters.NewBidderResponseWithBidsCapacity(5)
 
+	mtypeFallback := adapters.FallbackToMTypeFromImpWithDefault{
+		Imps:         internalRequest.Imp,
+		TypePriority: []openrtb2.MarkupType{openrtb2.MarkupVideo, openrtb2.MarkupBanner},
+		TypeDefault:  openrtb2.MarkupBanner,
+	}
+
 	for _, sb := range bidResp.SeatBid {
 		for i := 0; i < len(sb.Bid); i++ {
 			bid := &sb.Bid[i]
-
-			adapters.FallbackToMTypeFromImpWithDefault{
-				Imps:         internalRequest.Imp,
-				TypePriority: []openrtb2.MarkupType{openrtb2.MarkupVideo, openrtb2.MarkupBanner},
-				TypeDefault:  openrtb2.MarkupBanner,
-			}.Apply(bid)
-
-			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
-				Bid: bid,
-			})
-
+			mtypeFallback.Apply(bid)
+			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{Bid: bid})
 		}
 	}
 	return bidResponse, []error{}
