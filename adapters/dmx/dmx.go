@@ -243,15 +243,20 @@ func (adapter *DmxAdapter) MakeBids(request *openrtb2.BidRequest, externalReques
 
 	for _, sb := range bidResp.SeatBid {
 		for i := range sb.Bid {
-			bidType, err := getMediaTypeForImp(sb.Bid[i].ImpID, request.Imp)
+			bid := &sb.Bid[i]
+
+			err := adapters.FallbackToMTypeFromImpWithError{
+				Imps:         request.Imp,
+				TypePriority: []openrtb2.MarkupType{openrtb2.MarkupBanner, openrtb2.MarkupVideo},
+			}.Apply(bid)
+
 			if err != nil {
 				errs = append(errs, err)
 			} else {
 				b := &adapters.TypedBid{
-					Bid:     &sb.Bid[i],
-					BidType: bidType,
+					Bid: bid,
 				}
-				if b.BidType == openrtb_ext.BidTypeVideo {
+				if bid.MType == openrtb2.MarkupVideo {
 					b.Bid.AdM = videoImpInsertion(b.Bid)
 				}
 				bidResponse.Bids = append(bidResponse.Bids, b)
@@ -304,23 +309,6 @@ func addParams(str string) string {
 	return ""
 }
 
-func getMediaTypeForImp(impID string, imps []openrtb2.Imp) (openrtb_ext.BidType, error) {
-	mediaType := openrtb_ext.BidTypeBanner
-	for _, imp := range imps {
-		if imp.ID == impID {
-			if imp.Banner == nil && imp.Video != nil {
-				mediaType = openrtb_ext.BidTypeVideo
-			}
-			return mediaType, nil
-		}
-	}
-
-	// This shouldnt happen. Lets handle it just incase by returning an error.
-	return "", &errortypes.BadInput{
-		Message: fmt.Sprintf("Failed to find impression \"%s\" ", impID),
-	}
-}
-
 func videoImpInsertion(bid *openrtb2.Bid) string {
 	adm := bid.AdM
 	nurl := bid.NURL
@@ -352,6 +340,7 @@ func getIdfa(request *openrtb2.BidRequest) (string, bool) {
 	}
 	return "", false
 }
+
 func checkProtocols(imp *openrtb2.Video) []adcom1.MediaCreativeSubtype {
 	if len(imp.Protocols) > 0 {
 		return imp.Protocols
