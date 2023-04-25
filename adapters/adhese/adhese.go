@@ -187,10 +187,14 @@ func (a *AdheseAdapter) MakeBids(internalRequest *openrtb2.BidRequest, externalR
 	var errs []error
 	for _, sb := range bidResponse.SeatBid {
 		for i := 0; i < len(sb.Bid); i++ {
-			bid := sb.Bid[i]
+			bid := &sb.Bid[i]
+
+			if bid.MType == 0 {
+				bid.MType = getMType(bid.AdM)
+			}
+
 			bidderResponse.Bids = append(bidderResponse.Bids, &adapters.TypedBid{
-				Bid:     &bid,
-				BidType: getBidType(bid.AdM),
+				Bid: bid,
 			})
 
 		}
@@ -242,11 +246,11 @@ func getAdMarkup(adheseBid AdheseBid, adheseExt AdheseExt) string {
 	return adheseExt.Tag
 }
 
-func getBidType(bidAdm string) openrtb_ext.BidType {
+func getMType(bidAdm string) openrtb2.MarkupType {
 	if bidAdm != "" && ContainsAny(bidAdm, []string{"<?xml", "<vast"}) {
-		return openrtb_ext.BidTypeVideo
+		return openrtb2.MarkupVideo
 	}
-	return openrtb_ext.BidTypeBanner
+	return openrtb2.MarkupBanner
 }
 
 func WrapReqError(errorStr string) *errortypes.BadInput {

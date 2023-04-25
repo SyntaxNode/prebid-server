@@ -88,6 +88,7 @@
               "price": 1.000000,
               "dealid": "888",
               "crid": "60613369",
+              "mtype": 1,
               "ext": {
                     "adFormat": "",
                     "adType": "leaderboard",
@@ -97,8 +98,7 @@
                     "priority": "",
                     "viewableImpressionCounter": ""
                   }
-            },
-            "type": "banner"
+            }
           }
         ]
     }
