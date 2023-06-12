@@ -151,12 +151,20 @@ func (c standardChooser) evaluate(bidder string, syncersSeen map[string]struct{}
 		return nil, BidderEvaluation{Status: StatusAlreadySynced, Bidder: bidder, SyncerKey: syncer.Key()}
 	}
 
+	// integrate with syncUser activity here
+	// will need to provide a RequestWrapper. since this is one of the few activities without a natural request.
+	// compose a fake one. you won't have geo, but can provide gppsid.
+	if !privacy.ActivityAllows(bidder) {
+		return nil, BidderEvaluation{Status: StatusBlockedByPrivacy, Bidder: bidder, SyncerKey: syncer.Key()}
+	}
+
+	// change the status to the more general new StatusBlockedByPrivacy that you'll create
 	if !privacy.GDPRAllowsBidderSync(bidder) {
-		return nil, BidderEvaluation{Status: StatusBlockedByGDPR, Bidder: bidder, SyncerKey: syncer.Key()}
+		return nil, BidderEvaluation{Status: StatusBlockedByPrivacy, Bidder: bidder, SyncerKey: syncer.Key()}
 	}
 
 	if !privacy.CCPAAllowsBidderSync(bidder) {
-		return nil, BidderEvaluation{Status: StatusBlockedByCCPA, Bidder: bidder, SyncerKey: syncer.Key()}
+		return nil, BidderEvaluation{Status: StatusBlockedByPrivacy, Bidder: bidder, SyncerKey: syncer.Key()}
 	}
 
 	return syncer, BidderEvaluation{Status: StatusOK, Bidder: bidder, SyncerKey: syncer.Key()}
