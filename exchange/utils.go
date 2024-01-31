@@ -67,8 +67,6 @@ func (rs *requestSplitter) Split(ctx context.Context,
 	reqAliases := getRequestAliases(reqExt)
 	reqAliasesGVLIDs := getRequestAliasesGVLIDs(reqExt)
 
-	allowedBidderRequests = make([]BidderRequest, 0)
-
 	bidderImpWithBidResp := stored_responses.InitStoredBidResponses(req.BidRequest, auctionReq.StoredBidResponses)
 
 	impsByBidder, err := splitImps(req.BidRequest.Imp)
@@ -148,7 +146,7 @@ func (rs *requestSplitter) Split(ctx context.Context,
 		gdprPerms = rs.gdprPermsBuilder(auctionReq.TCF2Config, gdprRequestInfo)
 	}
 
-	// bidder level privacy policies
+	allowedBidderRequests = make([]BidderRequest, 0, len(allBidderRequests))
 	for _, bidderRequest := range allBidderRequests {
 		// fetchBids activity
 		scopedName := privacy.Component{Type: privacy.ComponentTypeBidder, Name: bidderRequest.BidderName.String()}
