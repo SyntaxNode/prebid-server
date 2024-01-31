@@ -251,7 +251,7 @@ func getRequestAliasesGVLIDs(ext *openrtb_ext.RequestExt) map[string]uint16 {
 		return nil
 	}
 
-	if prebid := ext.GetPrebid(); prebid != nil && prebid.Aliases != nil {
+	if prebid := ext.GetPrebid(); prebid != nil && prebid.AliasGVLIDs != nil {
 		return prebid.AliasGVLIDs
 	}
 
