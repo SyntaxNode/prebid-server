@@ -423,7 +423,7 @@ func TestCreateSanitizedImpExt(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequests(t *testing.T) {
+func TestRequestSplitter(t *testing.T) {
 	emptyTCF2Config := gdpr.NewTCF2Config(config.TCF2{}, config.AccountGDPR{})
 
 	testCases := []struct {
@@ -475,7 +475,7 @@ func TestCleanOpenRTBRequests(t *testing.T) {
 			hostSChainNode:    nil,
 			bidderInfo:        config.BidderInfos{},
 		}
-		bidderRequests, _, err := reqSplitter.cleanOpenRTBRequests(context.Background(), test.req, nil, gdpr.SignalNo, map[string]float64{})
+		bidderRequests, _, err := reqSplitter.Split(context.Background(), test.req, nil, gdpr.SignalNo, map[string]float64{})
 		if test.hasError {
 			assert.NotNil(t, err, "Error shouldn't be nil")
 		} else {
@@ -485,7 +485,7 @@ func TestCleanOpenRTBRequests(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsWithFPD(t *testing.T) {
+func TestRequestSplitterWithFPD(t *testing.T) {
 	fpd := make(map[openrtb_ext.BidderName]*firstpartydata.ResolvedFirstPartyData)
 
 	apnFpd := firstpartydata.ResolvedFirstPartyData{
@@ -541,7 +541,7 @@ func TestCleanOpenRTBRequestsWithFPD(t *testing.T) {
 			bidderInfo:        config.BidderInfos{},
 		}
 
-		bidderRequests, _, err := reqSplitter.cleanOpenRTBRequests(context.Background(), test.req, nil, gdpr.SignalNo, map[string]float64{})
+		bidderRequests, _, err := reqSplitter.Split(context.Background(), test.req, nil, gdpr.SignalNo, map[string]float64{})
 		assert.Empty(t, err, "No errors should be returned")
 		for _, bidderRequest := range bidderRequests {
 			bidderName := bidderRequest.BidderName
@@ -599,7 +599,7 @@ func TestExtractAdapterReqBidderParamsMap(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsWithBidResponses(t *testing.T) {
+func TestRequestSplitterWithBidResponses(t *testing.T) {
 	bidRespId1 := json.RawMessage(`{"id": "resp_id1"}`)
 	bidRespId2 := json.RawMessage(`{"id": "resp_id2"}`)
 
@@ -856,7 +856,7 @@ func TestCleanOpenRTBRequestsWithBidResponses(t *testing.T) {
 			bidderInfo:        config.BidderInfos{},
 		}
 
-		actualBidderRequests, _, err := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
+		actualBidderRequests, _, err := reqSplitter.Split(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
 		assert.Empty(t, err, "No errors should be returned")
 		assert.Len(t, actualBidderRequests, len(test.expectedBidderRequests), "result len doesn't match for testCase %s", test.description)
 		for _, actualBidderRequest := range actualBidderRequests {
@@ -867,7 +867,7 @@ func TestCleanOpenRTBRequestsWithBidResponses(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsCCPA(t *testing.T) {
+func TestRequestSplitterCCPA(t *testing.T) {
 	trueValue, falseValue := true, false
 
 	testCases := []struct {
@@ -1025,7 +1025,7 @@ func TestCleanOpenRTBRequestsCCPA(t *testing.T) {
 			bidderInfo:        config.BidderInfos{},
 		}
 
-		bidderRequests, privacyLabels, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
+		bidderRequests, privacyLabels, errs := reqSplitter.Split(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
 		result := bidderRequests[0]
 
 		assert.Nil(t, errs)
@@ -1040,7 +1040,7 @@ func TestCleanOpenRTBRequestsCCPA(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsCCPAErrors(t *testing.T) {
+func TestRequestSplitterCCPAErrors(t *testing.T) {
 	testCases := []struct {
 		description string
 		reqExt      json.RawMessage
@@ -1102,13 +1102,13 @@ func TestCleanOpenRTBRequestsCCPAErrors(t *testing.T) {
 			bidderInfo:        config.BidderInfos{},
 		}
 
-		_, _, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, &reqExtStruct, gdpr.SignalNo, map[string]float64{})
+		_, _, errs := reqSplitter.Split(context.Background(), auctionReq, &reqExtStruct, gdpr.SignalNo, map[string]float64{})
 
 		assert.ElementsMatch(t, []error{test.expectError}, errs, test.description)
 	}
 }
 
-func TestCleanOpenRTBRequestsCOPPA(t *testing.T) {
+func TestRequestSplitterCOPPA(t *testing.T) {
 	testCases := []struct {
 		description         string
 		coppa               int8
@@ -1161,7 +1161,7 @@ func TestCleanOpenRTBRequestsCOPPA(t *testing.T) {
 			bidderInfo:        config.BidderInfos{},
 		}
 
-		bidderRequests, privacyLabels, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
+		bidderRequests, privacyLabels, errs := reqSplitter.Split(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
 		result := bidderRequests[0]
 
 		assert.Nil(t, errs)
@@ -1176,7 +1176,7 @@ func TestCleanOpenRTBRequestsCOPPA(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsSChain(t *testing.T) {
+func TestRequestSplitterSChain(t *testing.T) {
 	const seller1SChain string = `"schain":{"complete":1,"nodes":[{"asi":"directseller1.com","sid":"00001","rid":"BidRequest1","hp":1}],"ver":"1.0"}`
 	const seller2SChain string = `"schain":{"complete":2,"nodes":[{"asi":"directseller2.com","sid":"00002","rid":"BidRequest2","hp":2}],"ver":"2.0"}`
 
@@ -1254,7 +1254,7 @@ func TestCleanOpenRTBRequestsSChain(t *testing.T) {
 			bidderInfo:        config.BidderInfos{},
 		}
 
-		bidderRequests, _, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, extRequest, gdpr.SignalNo, map[string]float64{})
+		bidderRequests, _, errs := reqSplitter.Split(context.Background(), auctionReq, extRequest, gdpr.SignalNo, map[string]float64{})
 		if test.hasError == true {
 			assert.NotNil(t, errs)
 			assert.Len(t, bidderRequests, 0)
@@ -1267,7 +1267,7 @@ func TestCleanOpenRTBRequestsSChain(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsBidderParams(t *testing.T) {
+func TestRequestSplitterBidderParams(t *testing.T) {
 	testCases := []struct {
 		description string
 		inExt       json.RawMessage
@@ -1325,7 +1325,7 @@ func TestCleanOpenRTBRequestsBidderParams(t *testing.T) {
 			bidderInfo:        config.BidderInfos{},
 		}
 
-		bidderRequests, _, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, extRequest, gdpr.SignalNo, map[string]float64{})
+		bidderRequests, _, errs := reqSplitter.Split(context.Background(), auctionReq, extRequest, gdpr.SignalNo, map[string]float64{})
 		if test.hasError == true {
 			assert.NotNil(t, errs)
 			assert.Len(t, bidderRequests, 0)
@@ -1836,7 +1836,7 @@ func TestGetExtBidAdjustmentFactors(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsLMT(t *testing.T) {
+func TestRequestSplitterLMT(t *testing.T) {
 	var (
 		enabled  int8 = 1
 		disabled int8 = 0
@@ -1917,7 +1917,7 @@ func TestCleanOpenRTBRequestsLMT(t *testing.T) {
 			bidderInfo:        config.BidderInfos{},
 		}
 
-		results, privacyLabels, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
+		results, privacyLabels, errs := reqSplitter.Split(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
 		result := results[0]
 
 		assert.Nil(t, errs)
@@ -1932,7 +1932,7 @@ func TestCleanOpenRTBRequestsLMT(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsGDPR(t *testing.T) {
+func TestRequestSplitterGDPR(t *testing.T) {
 	tcf2Consent := "COzTVhaOzTVhaGvAAAENAiCIAP_AAH_AAAAAAEEUACCKAAA"
 	trueValue, falseValue := true, false
 
@@ -2150,7 +2150,7 @@ func TestCleanOpenRTBRequestsGDPR(t *testing.T) {
 			bidderInfo:        config.BidderInfos{},
 		}
 
-		results, privacyLabels, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, nil, gdprDefaultValue, map[string]float64{})
+		results, privacyLabels, errs := reqSplitter.Split(context.Background(), auctionReq, nil, gdprDefaultValue, map[string]float64{})
 		result := results[0]
 
 		if test.expectError {
@@ -2170,7 +2170,7 @@ func TestCleanOpenRTBRequestsGDPR(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsGDPRBlockBidRequest(t *testing.T) {
+func TestRequestSplitterGDPRBlockBidRequest(t *testing.T) {
 	testCases := []struct {
 		description            string
 		gdprEnforced           bool
@@ -2251,7 +2251,7 @@ func TestCleanOpenRTBRequestsGDPRBlockBidRequest(t *testing.T) {
 			bidderInfo:        config.BidderInfos{},
 		}
 
-		results, _, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
+		results, _, errs := reqSplitter.Split(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
 
 		// extract bidder name from each request in the results
 		bidders := []openrtb_ext.BidderName{}
@@ -2271,7 +2271,7 @@ func TestCleanOpenRTBRequestsGDPRBlockBidRequest(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsWithOpenRTBDowngrade(t *testing.T) {
+func TestRequestSplitterWithOpenRTBDowngrade(t *testing.T) {
 	emptyTCF2Config := gdpr.NewTCF2Config(config.TCF2{}, config.AccountGDPR{})
 
 	bidReq := newBidRequest(t)
@@ -2339,7 +2339,7 @@ func TestCleanOpenRTBRequestsWithOpenRTBDowngrade(t *testing.T) {
 				hostSChainNode:    nil,
 				bidderInfo:        test.bidderInfos,
 			}
-			bidderRequests, _, err := reqSplitter.cleanOpenRTBRequests(context.Background(), test.req, nil, gdpr.SignalNo, map[string]float64{})
+			bidderRequests, _, err := reqSplitter.Split(context.Background(), test.req, nil, gdpr.SignalNo, map[string]float64{})
 			assert.Nil(t, err, "Err should be nil")
 			bidRequest := bidderRequests[0]
 			assert.Equal(t, test.expectRegs, bidRequest.BidRequest.Regs)
@@ -3076,7 +3076,7 @@ func TestRemoveUnpermissionedEidsEmptyValidations(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsSChainMultipleBidders(t *testing.T) {
+func TestRequestSplitterSChainMultipleBidders(t *testing.T) {
 	req := &openrtb2.BidRequest{
 		Site: &openrtb2.Site{},
 		Source: &openrtb2.Source{
@@ -3115,7 +3115,7 @@ func TestCleanOpenRTBRequestsSChainMultipleBidders(t *testing.T) {
 		hostSChainNode:    nil,
 		bidderInfo:        config.BidderInfos{},
 	}
-	bidderRequests, _, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, extRequest, gdpr.SignalNo, map[string]float64{})
+	bidderRequests, _, errs := reqSplitter.Split(context.Background(), auctionReq, extRequest, gdpr.SignalNo, map[string]float64{})
 
 	assert.Nil(t, errs)
 	assert.Len(t, bidderRequests, 2, "Bid request count is not 2")
@@ -3131,7 +3131,7 @@ func TestCleanOpenRTBRequestsSChainMultipleBidders(t *testing.T) {
 	assert.Equal(t, axonixPrebidSchainsSchain, bidRequestSourceExts["axonix"], "Incorrect axonix bid request schain in source.ext")
 }
 
-func TestCleanOpenRTBRequestsBidAdjustment(t *testing.T) {
+func TestRequestSplitterBidAdjustment(t *testing.T) {
 	tcf2Consent := "COzTVhaOzTVhaGvAAAENAiCIAP_AAH_AAAAAAEEUACCKAAA"
 	falseValue := false
 	testCases := []struct {
@@ -3235,7 +3235,7 @@ func TestCleanOpenRTBRequestsBidAdjustment(t *testing.T) {
 			hostSChainNode:    nil,
 			bidderInfo:        config.BidderInfos{},
 		}
-		results, _, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, nil, gdpr.SignalNo, test.bidAdjustmentFactor)
+		results, _, errs := reqSplitter.Split(context.Background(), auctionReq, nil, gdpr.SignalNo, test.bidAdjustmentFactor)
 		result := results[0]
 		assert.Nil(t, errs)
 		assert.Equal(t, test.expectedImp, result.BidRequest.Imp, test.description)
@@ -3487,7 +3487,7 @@ func TestBuildExtData(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsFilterBidderRequestExt(t *testing.T) {
+func TestRequestSplitterFilterBidderRequestExt(t *testing.T) {
 	testCases := []struct {
 		desc      string
 		inExt     json.RawMessage
@@ -3661,7 +3661,7 @@ func TestCleanOpenRTBRequestsFilterBidderRequestExt(t *testing.T) {
 			bidderInfo:        config.BidderInfos{},
 		}
 
-		bidderRequests, _, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, extRequest, gdpr.SignalNo, map[string]float64{})
+		bidderRequests, _, errs := reqSplitter.Split(context.Background(), auctionReq, extRequest, gdpr.SignalNo, map[string]float64{})
 		assert.Equal(t, test.wantError, len(errs) != 0, test.desc)
 		sort.Slice(bidderRequests, func(i, j int) bool {
 			return bidderRequests[i].BidderCoreName < bidderRequests[j].BidderCoreName
@@ -4479,7 +4479,7 @@ func TestGetMediaTypeForBid(t *testing.T) {
 	}
 }
 
-func TestCleanOpenRTBRequestsActivities(t *testing.T) {
+func TestRequestSplitterActivities(t *testing.T) {
 	expectedUserDefault := openrtb2.User{
 		ID:       "our-id",
 		BuyerUID: "their-id",
@@ -4672,7 +4672,7 @@ func TestCleanOpenRTBRequestsActivities(t *testing.T) {
 				bidderInfo:        config.BidderInfos{},
 			}
 
-			bidderRequests, _, errs := reqSplitter.cleanOpenRTBRequests(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
+			bidderRequests, _, errs := reqSplitter.Split(context.Background(), auctionReq, nil, gdpr.SignalNo, map[string]float64{})
 			assert.Empty(t, errs)
 			assert.Len(t, bidderRequests, test.expectedReqNumber)
 

@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/prebid/prebid-server/v2/ortb"
 	"math/rand"
 	"strings"
+
+	"github.com/prebid/prebid-server/v2/ortb"
 
 	"github.com/buger/jsonparser"
 	"github.com/prebid/go-gdpr/vendorconsent"
@@ -50,12 +51,8 @@ type requestSplitter struct {
 	bidderInfo        config.BidderInfos
 }
 
-// cleanOpenRTBRequests splits the input request into requests which are sanitized for each bidder. Intended behavior is:
-//
-//  1. BidRequest.Imp[].Ext will only contain the "prebid" field and a "bidder" field which has the params for the intended Bidder.
-//  2. Every BidRequest.Imp[] requested Bids from the Bidder who keys it.
-//  3. BidRequest.User.BuyerUID will be set to that Bidder's ID.
-func (rs *requestSplitter) cleanOpenRTBRequests(ctx context.Context,
+// Split splits the input request into requests which are sanitized for each bidder.
+func (rs *requestSplitter) Split(ctx context.Context,
 	auctionReq AuctionRequest,
 	requestExt *openrtb_ext.ExtRequest,
 	gdprDefaultValue gdpr.Signal, bidAdjustmentFactors map[string]float64,

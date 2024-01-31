@@ -202,7 +202,7 @@ type AuctionRequest struct {
 	TCF2Config                 gdpr.TCF2ConfigReader
 	Activities                 privacy.ActivityControl
 
-	// LegacyLabels is included here for temporary compatibility with cleanOpenRTBRequests
+	// LegacyLabels is included here for temporary compatibility with requestsplitter
 	// in HoldAuction until we get to factoring it away. Do not use for anything new.
 	LegacyLabels   metrics.Labels
 	FirstPartyData map[openrtb_ext.BidderName]*firstpartydata.ResolvedFirstPartyData
@@ -323,7 +323,7 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 		Prebid: *requestExtPrebid,
 		SChain: requestExt.GetSChain(),
 	}
-	bidderRequests, privacyLabels, errs := e.requestSplitter.cleanOpenRTBRequests(ctx, *r, requestExtLegacy, gdprDefaultValue, bidAdjustmentFactors)
+	bidderRequests, privacyLabels, errs := e.requestSplitter.Split(ctx, *r, requestExtLegacy, gdprDefaultValue, bidAdjustmentFactors)
 	errs = append(errs, floorErrs...)
 
 	mergedBidAdj, err := bidadjustment.Merge(r.BidRequestWrapper, r.Account.BidAdjustments)
