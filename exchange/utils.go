@@ -11,7 +11,6 @@ import (
 
 	"github.com/prebid/prebid-server/v2/ortb"
 
-	"github.com/buger/jsonparser"
 	"github.com/prebid/go-gdpr/vendorconsent"
 	gpplib "github.com/prebid/go-gpp"
 	gppConstants "github.com/prebid/go-gpp/constants"
@@ -58,10 +57,15 @@ func (rs *requestSplitter) Split(ctx context.Context,
 	gdprDefaultValue gdpr.Signal, bidAdjustmentFactors map[string]float64,
 ) (allowedBidderRequests []BidderRequest, privacyLabels metrics.PrivacyLabels, errs []error) {
 	req := auctionReq.BidRequestWrapper
-	aliases, errs := parseAliases(req.BidRequest)
-	if len(errs) > 0 {
+
+	reqExt, err := req.GetRequestExt()
+	if err != nil {
+		errs = []error{err}
 		return
 	}
+
+	reqAliases := getRequestAliases(reqExt)
+	reqAliasesGVLIDs := getRequestAliasesGVLIDs(reqExt)
 
 	allowedBidderRequests = make([]BidderRequest, 0)
 
@@ -73,15 +77,10 @@ func (rs *requestSplitter) Split(ctx context.Context,
 		return
 	}
 
-	aliasesGVLIDs, errs := parseAliasesGVLIDs(req.BidRequest)
-	if len(errs) > 0 {
-		return
-	}
-
 	var allBidderRequests []BidderRequest
-	allBidderRequests, errs = getAuctionBidderRequests(auctionReq, requestExt, rs.bidderToSyncerKey, impsByBidder, aliases, rs.hostSChainNode)
+	allBidderRequests, errs = getAuctionBidderRequests(auctionReq, requestExt, rs.bidderToSyncerKey, impsByBidder, reqAliases, rs.hostSChainNode)
 
-	bidderNameToBidderReq := buildBidResponseRequest(req.BidRequest, bidderImpWithBidResp, aliases, auctionReq.BidderImpReplaceImpID)
+	bidderNameToBidderReq := buildBidResponseRequest(req.BidRequest, bidderImpWithBidResp, reqAliases, auctionReq.BidderImpReplaceImpID)
 	//this function should be executed after getAuctionBidderRequests
 	allBidderRequests = mergeBidderRequests(allBidderRequests, bidderNameToBidderReq)
 
@@ -109,7 +108,7 @@ func (rs *requestSplitter) Split(ctx context.Context,
 	}
 	gdprApplies := gdprSignal == gdpr.SignalYes || (gdprSignal == gdpr.SignalAmbiguous && gdprDefaultValue == gdpr.SignalYes)
 
-	ccpaEnforcer, err := extractCCPA(req.BidRequest, rs.privacyConfig, &auctionReq.Account, aliases, channelTypeMap[auctionReq.LegacyLabels.RType], gpp)
+	ccpaEnforcer, err := extractCCPA(req.BidRequest, rs.privacyConfig, &auctionReq.Account, reqAliases, channelTypeMap[auctionReq.LegacyLabels.RType], gpp)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -141,7 +140,7 @@ func (rs *requestSplitter) Split(ctx context.Context,
 		}
 
 		gdprRequestInfo := gdpr.RequestInfo{
-			AliasGVLIDs: aliasesGVLIDs,
+			AliasGVLIDs: reqAliasesGVLIDs,
 			Consent:     consent,
 			GDPRSignal:  gdprSignal,
 			PublisherID: auctionReq.LegacyLabels.PubID,
@@ -233,6 +232,30 @@ func (rs *requestSplitter) Split(ctx context.Context,
 	}
 
 	return
+}
+
+func getRequestAliases(ext *openrtb_ext.RequestExt) map[string]string {
+	if ext == nil {
+		return nil
+	}
+
+	if prebid := ext.GetPrebid(); prebid != nil && prebid.Aliases != nil {
+		return prebid.Aliases
+	}
+
+	return nil
+}
+
+func getRequestAliasesGVLIDs(ext *openrtb_ext.RequestExt) map[string]uint16 {
+	if ext == nil {
+		return nil
+	}
+
+	if prebid := ext.GetPrebid(); prebid != nil && prebid.Aliases != nil {
+		return prebid.AliasGVLIDs
+	}
+
+	return nil
 }
 
 func shouldSetLegacyPrivacy(bidderInfo config.BidderInfos, bidder string) bool {
@@ -783,32 +806,6 @@ func resolveBidder(bidder string, requestAliases map[string]string) (openrtb_ext
 	return normalisedBidderName, false
 }
 
-// parseAliases parses the aliases from the BidRequest
-func parseAliases(orig *openrtb2.BidRequest) (map[string]string, []error) {
-	var aliases map[string]string
-	if value, dataType, _, err := jsonparser.Get(orig.Ext, openrtb_ext.PrebidExtKey, "aliases"); dataType == jsonparser.Object && err == nil {
-		if err := jsonutil.Unmarshal(value, &aliases); err != nil {
-			return nil, []error{err}
-		}
-	} else if dataType != jsonparser.NotExist && err != jsonparser.KeyPathNotFoundError {
-		return nil, []error{err}
-	}
-	return aliases, nil
-}
-
-// parseAliasesGVLIDs parses the Bidder Alias GVLIDs from the BidRequest
-func parseAliasesGVLIDs(orig *openrtb2.BidRequest) (map[string]uint16, []error) {
-	var aliasesGVLIDs map[string]uint16
-	if value, dataType, _, err := jsonparser.Get(orig.Ext, openrtb_ext.PrebidExtKey, "aliasgvlids"); dataType == jsonparser.Object && err == nil {
-		if err := jsonutil.Unmarshal(value, &aliasesGVLIDs); err != nil {
-			return nil, []error{err}
-		}
-	} else if dataType != jsonparser.NotExist && err != jsonparser.KeyPathNotFoundError {
-		return nil, []error{err}
-	}
-	return aliasesGVLIDs, nil
-}
-
 func GetValidBidders(aliases map[string]string) map[string]struct{} {
 	validBidders := openrtb_ext.BuildBidderNameHashSet()
 
@@ -1031,8 +1028,8 @@ func setLegacyGDPRFromGPP(r *openrtb2.BidRequest, gpp gpplib.GppContainer) {
 			}
 		}
 	}
-
 }
+
 func setLegacyUSPFromGPP(r *openrtb2.BidRequest, gpp gpplib.GppContainer) {
 	if r.Regs == nil {
 		return
@@ -1114,7 +1111,6 @@ func getPrebidMediaTypeForBid(bid openrtb2.Bid) (openrtb_ext.BidType, error) {
 }
 
 func applyBidAdjustmentToFloor(allBidderRequests []BidderRequest, bidAdjustmentFactors map[string]float64) {
-
 	if len(bidAdjustmentFactors) == 0 {
 		return
 	}

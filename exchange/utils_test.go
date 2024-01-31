@@ -3386,68 +3386,6 @@ func TestApplyFPD(t *testing.T) {
 	}
 }
 
-func Test_parseAliasesGVLIDs(t *testing.T) {
-	type args struct {
-		orig *openrtb2.BidRequest
-	}
-	tests := []struct {
-		name      string
-		args      args
-		want      map[string]uint16
-		wantError bool
-	}{
-		{
-			"AliasGVLID Parsed Correctly",
-			args{
-				orig: &openrtb2.BidRequest{
-					Ext: json.RawMessage(`{"prebid":{"aliases":{"somealiascode":"appnexus"}, "aliasgvlids":{"somealiascode":1}}}`),
-				},
-			},
-			map[string]uint16{"somealiascode": 1},
-			false,
-		},
-		{
-			"AliasGVLID parsing error",
-			args{
-				orig: &openrtb2.BidRequest{
-					Ext: json.RawMessage(`{"prebid":{"aliases":{"somealiascode":"appnexus"}, "aliasgvlids": {"somealiascode":"abc"}`),
-				},
-			},
-			nil,
-			true,
-		},
-		{
-			"Invalid AliasGVLID",
-			args{
-				orig: &openrtb2.BidRequest{
-					Ext: json.RawMessage(`{"prebid":{"aliases":{"somealiascode":"appnexus"}, "aliasgvlids":"abc"}`),
-				},
-			},
-			nil,
-			true,
-		},
-		{
-			"Missing AliasGVLID",
-			args{
-				orig: &openrtb2.BidRequest{
-					Ext: json.RawMessage(`{"prebid":{"aliases":{"somealiascode":"appnexus"}}`),
-				},
-			},
-			nil,
-			false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseAliasesGVLIDs(tt.args.orig)
-			assert.Equal(t, tt.want, got, "parseAliasesGVLIDs() got = %v, want %v", got, tt.want)
-			if !tt.wantError && err != nil {
-				t.Errorf("parseAliasesGVLIDs() expected error got nil")
-			}
-		})
-	}
-}
-
 func TestBuildExtData(t *testing.T) {
 	testCases := []struct {
 		description string

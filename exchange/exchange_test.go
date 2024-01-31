@@ -2097,15 +2097,14 @@ func loadFile(filename string) (*exchangeSpec, error) {
 }
 
 func runSpec(t *testing.T, filename string, spec *exchangeSpec) {
-	aliases, errs := parseAliases(&spec.IncomingRequest.OrtbRequest)
-	if len(errs) != 0 {
+	aliases, err := parseRequestAliases(spec.IncomingRequest.OrtbRequest)
+	if err != nil {
 		t.Fatalf("%s: Failed to parse aliases", filename)
 	}
 
-	var s struct{}
 	eeac := make(map[string]struct{})
-	for _, c := range []string{"FIN", "FRA", "GUF"} {
-		eeac[c] = s
+	for _, country := range []string{"FIN", "FRA", "GUF"} {
+		eeac[country] = struct{}{}
 	}
 
 	var gdprDefaultValue string
@@ -5671,6 +5670,18 @@ func (m *mockBidder) MakeRequests(request *openrtb2.BidRequest, reqInfo *adapter
 func (m *mockBidder) MakeBids(internalRequest *openrtb2.BidRequest, externalRequest *adapters.RequestData, response *adapters.ResponseData) (*adapters.BidderResponse, []error) {
 	args := m.Called(internalRequest, externalRequest, response)
 	return args.Get(0).(*adapters.BidderResponse), args.Get(1).([]error)
+}
+
+func parseRequestAliases(r openrtb2.BidRequest) (map[string]string, error) {
+	var aliases map[string]string
+	if value, dataType, _, err := jsonparser.Get(r.Ext, openrtb_ext.PrebidExtKey, "aliases"); dataType == jsonparser.Object && err == nil {
+		if err := jsonutil.Unmarshal(value, &aliases); err != nil {
+			return nil, err
+		}
+	} else if dataType != jsonparser.NotExist && err != jsonparser.KeyPathNotFoundError {
+		return nil, err
+	}
+	return aliases, nil
 }
 
 func getInfoFromImp(req *openrtb_ext.RequestWrapper) (json.RawMessage, string, error) {
